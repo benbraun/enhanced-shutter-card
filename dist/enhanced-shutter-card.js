@@ -118,6 +118,11 @@ const ESC_CLASS_SELECTOR_PARTIAL = `${ESC_CLASS_BASE_NAME}-selector-partial`;
 const ESC_CLASS_SELECTOR_SLIDE = `${ESC_CLASS_BASE_NAME}-selector-slide`;
 const ESC_CLASS_SELECTOR_SLIDE_SLATS = `${ESC_CLASS_SELECTOR_SLIDE}-slats`;
 const ESC_CLASS_SELECTOR_SLIDE_EDGE = `${ESC_CLASS_SELECTOR_SLIDE}-edge`;
+const ESC_CLASS_SELECTOR_SLIDE_TDBU = `${ESC_CLASS_SELECTOR_SLIDE}-tdbu`;
+const ESC_CLASS_SELECTOR_SLIDE_TDBU_CLIP = `${ESC_CLASS_SELECTOR_SLIDE_TDBU}-clip`;
+const ESC_CLASS_SELECTOR_SLIDE_TDBU_RAIL_TOP = `${ESC_CLASS_SELECTOR_SLIDE_TDBU}-rail-top`;
+const ESC_CLASS_SELECTOR_SLIDE_TDBU_RAIL_BOTTOM = `${ESC_CLASS_SELECTOR_SLIDE_TDBU}-rail-bottom`;
+const ESC_CLASS_SELECTOR_PICKER_TDBU = `${ESC_CLASS_SELECTOR_PICKER}-tdbu`;
 const ESC_CLASS_MOVEMENT_OVERLAY = `${ESC_CLASS_BASE_NAME}-movement-overlay`;
 const ESC_CLASS_MOVEMENT_UP = `${ESC_CLASS_BASE_NAME}-movement-up`;
 const ESC_CLASS_MOVEMENT_DOWN = `${ESC_CLASS_BASE_NAME}-movement-down`;
@@ -222,6 +227,8 @@ const CONFIG_DISABLE_STANDARD_BUTTONS = 'disable_standard_buttons';
 const CONFIG_DISABLE_PARTIAL_OPEN_BUTTONS = 'disable_partial_open_buttons';
 const CONFIG_PICKER_OVERLAP_PX = 'picker_overlap_px';
 const CONFIG_CURRENT_POSITION = 'current_position';
+const CONFIG_TDBU_ENTITY_ID = 'tdbu_entity';  // Top-Down Bottom-Up: entity for the bottom-up shade
+const CONFIG_TDBU_INVERT_PCT = 'tdbu_invert_percentage'; // invert position reading for the bottom-up shade entity
 
 const CONFIG_BUTTON_STOP_HIDE_STATES = 'button_stop_hide_states';
 const CONFIG_BUTTON_OPENED_HIDE_STATES = 'button_up_hide_states';  // TODO rename up->opened
@@ -410,6 +417,9 @@ const CONFIG_DEFAULT ={
 
   [CONFIG_PICKER_OVERLAP_PX]: ESC_PICKER_OVERLAP_PX,
   [CONFIG_CURRENT_POSITION]: ESC_CURRENT_POSITION,
+
+  [CONFIG_TDBU_ENTITY_ID]: null,
+  [CONFIG_TDBU_INVERT_PCT]: false,
 
   [CONFIG_BUTTON_STOP_HIDE_STATES]: ESC_BUTTON_STOP_HIDE_STATES,
   [CONFIG_BUTTON_OPENED_HIDE_STATES]: ESC_BUTTON_OPENED_HIDE_STATES,
@@ -662,6 +672,46 @@ const SHUTTER_CSS =`
 
         background-repeat: repeat;
         background-size: var(--esc-slide-background-edge-size);
+      }
+      .${ESC_CLASS_SELECTOR_SLIDE_TDBU_CLIP} {
+        position: absolute;
+        left: 0;
+        width: 100%;
+        top: var(--esc-tdbu-clip-top);
+        height: var(--esc-tdbu-clip-height);
+        overflow: hidden;
+      }
+      .${ESC_CLASS_SELECTOR_SLIDE_TDBU_CLIP} .${ESC_CLASS_SELECTOR_SLIDE} {
+        z-index: 0;
+      }
+      .${ESC_CLASS_SELECTOR_SLIDE_TDBU_CLIP} .${ESC_CLASS_SELECTOR_SLIDE_SLATS} {
+        height: var(--esc-tdbu-clip-height);
+      }
+      .${ESC_CLASS_SELECTOR_SLIDE_TDBU_RAIL_TOP},
+      .${ESC_CLASS_SELECTOR_SLIDE_TDBU_RAIL_BOTTOM} {
+        position: absolute;
+        left: 0;
+        width: 100%;
+        z-index: 1;
+      }
+      .${ESC_CLASS_SELECTOR_SLIDE_TDBU_RAIL_TOP} {
+        top: var(--esc-tdbu-clip-top);
+      }
+      .${ESC_CLASS_SELECTOR_SLIDE_TDBU_RAIL_BOTTOM} {
+        top: var(--esc-tdbu-rail-bottom-top);
+      }
+      .${ESC_CLASS_SELECTOR_PICKER_TDBU} {
+        z-index: ${Z_INDEX_PICKER};
+        position: absolute;
+        left: -50%;
+        width: 100%;
+        top: var(--esc-picker-top);
+        height: var(--esc-picker-height);
+        cursor: pointer;
+        transform-origin: center;
+        transform: var(--esc-transform-picker-tdbu);
+        touch-action: none;
+        user-select: none;
       }
       .${ESC_CLASS_SELECTOR_PARTIAL} {
         z-index: ${Z_INDEX_PARTIAL};
@@ -1007,6 +1057,18 @@ class EnhancedShutterCardNew extends LitElement{
                     cfg.signalState = NOT_KNOWN.includes(signalEntityFromHass.state) ? UNAVAILABLE : signalEntityFromHass.state;
                   }
                 }
+                // check TDBU entity change
+                const tdbuEntityId = cfg.tdbuEntityId();
+                if (tdbuEntityId) {
+                  const tdbuEntityFromHass = liveStates[tdbuEntityId];
+                  if (tdbuEntityFromHass) {
+                    const tdbuState = `${tdbuEntityFromHass.state}-${tdbuEntityFromHass.attributes.current_position}`;
+                    if (tdbuState !== cfg.tdbuState) {
+                      doUpdate = true;
+                      cfg.tdbuState = tdbuState;
+                    }
+                  }
+                }
               }
             });
 
@@ -1053,6 +1115,7 @@ class EnhancedShutterCardNew extends LitElement{
                 this.localCfgs[entityId].setCoverEntity(this.hass,entityId);
                 this.localCfgs[entityId].setBatteryEntity(this.hass,currEntity.battery_entity);
                 this.localCfgs[entityId].setSignalEntity(this.hass,currEntity.signal_entity);
+                this.localCfgs[entityId].setTdbuEntity(this.hass,currEntity.tdbu_entity);
 
                 return html`
                   <enhanced-shutter
@@ -1582,6 +1645,7 @@ class EnhancedShutter extends LitElement
     this.screenPosition=-1;
     this.actualScreenPosition=-1; // position on the computerscreen
     this.actualTiltPosition=-1; // real tilt position
+    this.actualTdbuScreenPosition=0; // screen position for TDBU bottom shade
     this.positionText ='';
     this.action = '#';
 
@@ -1644,15 +1708,24 @@ class EnhancedShutter extends LitElement
       this.actualScreenPosition =  this.defScreenPositionFromCurrentPosition(); //old
       this.actualShutterPosition = this.cfg.currentDevicePosition();
       this.actualTiltPosition = this.react_TiltPosition;
+    }else if (this.action=='user-drag-tdbu'){
+      // TDBU top-rail picker dragging: actualTdbuScreenPosition updated in mouseMoveTdbu, preserve it
+      this.actualScreenPosition = this.defScreenPositionFromCurrentPosition();
+      this.actualShutterPosition = this.cfg.currentDevicePosition() ?? 0;
+      this.actualTiltPosition = this.cfg.currentDeviceTiltPosition() ?? 0;
     }else{
-      // physical position cover shown.
-      this.actualScreenPosition =  this.defScreenPositionFromCurrentPosition();
+      // physical position from device state
+      this.actualScreenPosition = this.defScreenPositionFromCurrentPosition();
       this.actualShutterPosition = this.cfg.currentDevicePosition()?? 0;
-
       this.actualTiltPosition = this.cfg.currentDeviceTiltPosition() ?? 0;
       this.react_TiltPosition = this.actualTiltPosition; // TODO: logical not needed, but actual it does: check
+      // TDBU: top rail (bottom-up shade) screen position from device state
+      this.actualTdbuScreenPosition = this.defScreenPositionFromTdbuPosition();
     }
-    positionText =  this.cfg.computePositionText(this.actualShutterPosition,this.actualTiltPosition);
+
+    positionText = this.action == 'user-drag-tdbu'
+      ? this.cfg.computePositionText(this.actualShutterPosition, this.actualTiltPosition, this.react_ShutterPosition)
+      : this.cfg.computePositionText(this.actualShutterPosition, this.actualTiltPosition);
 
     let htmlParts = new htmlCard(this,positionText);
 
@@ -1688,7 +1761,10 @@ class EnhancedShutter extends LitElement
     const picker = findElement(this, `.${ESC_CLASS_SELECTOR_PICKER}`);
     if (picker) {
       this.manageEvents(ADD_EVENT, MOUSEDOWN, picker, this.mouseDown);
-
+    }
+    const pickerTdbu = findElement(this, `.${ESC_CLASS_SELECTOR_PICKER_TDBU}`);
+    if (pickerTdbu) {
+      this.manageEvents(ADD_EVENT, MOUSEDOWN, pickerTdbu, this.mouseDownTdbu);
     }
 
     // tilt .....
@@ -2090,6 +2166,17 @@ class EnhancedShutter extends LitElement
     return screenPosition;
 
   }
+  /**
+   * TDBU: top rail (tdbu_entity) — bottom-up shade whose top edge position is tracked.
+   * position=0: top edge at top of window (shade covers entire window from bottom).
+   * position=100: top edge at bottom of window (shade retracted, window open from bottom).
+   * No invertPosition needed: 0%=covered, 100%=open maps directly to top-edge screen position.
+   */
+  defScreenPositionFromTdbuPosition() {
+    if (!this.cfg.hasTdbu()) return 0;
+    const tdbuPosition = this.cfg.currentTdbuDevicePosition() ?? 0;
+    return this.offsetOpenedPx() + (this.coverSizeMovingDirectionPx() * tdbuPosition / 100);
+  }
 
   actualGlobalWidthPx() {
     let width;
@@ -2279,6 +2366,50 @@ class EnhancedShutter extends LitElement
     }
   };
 
+  mouseDownTdbu = (event) => {
+    if (event.pageY === undefined || this.cfg.passiveMode()) return;
+    if (event.cancelable) event.preventDefault();
+    this.action = 'user-drag-tdbu';
+    this.baseTdbuPickPoint = this.getPoint(event);
+    this.baseTdbuPickPoint.shutterScreenPos = this.actualTdbuScreenPosition;
+    this.manageEvents(ADD_EVENT, MOUSEMOVE, this, this.mouseMoveTdbu);
+    this.manageEvents(ADD_EVENT, MOUSEUP, window, this.mouseUpTdbu);
+  };
+  mouseMoveTdbu = (event) => {
+    if (event.pageY === undefined) return;
+    this.action = 'user-drag-tdbu';
+    const pickPoint = this.getPoint(event);
+    const delta = {x: pickPoint.x - this.baseTdbuPickPoint.x, y: pickPoint.y - this.baseTdbuPickPoint.y};
+    const delta_local = this.cfg.rotateBackOrtho(delta);
+    this.actualTdbuScreenPosition = Math.round(boundary(
+      this.baseTdbuPickPoint.shutterScreenPos + delta_local.y,
+      this.coverOpenedPx(),
+      this.coverClosedPx()
+    ));
+    // Trigger re-render via reactive property
+    this.react_ShutterPosition = this.getTdbuShutterPosFromScreenPos(this.actualTdbuScreenPosition);
+  };
+  mouseUpTdbu = (event) => {
+    if (event.pageY === undefined) return;
+    this.action = 'user-pick';
+    this.manageEvents(REMOVE_EVENT, MOUSEUP, window, this.mouseUpTdbu);
+    this.manageEvents(REMOVE_EVENT, MOUSEMOVE, this, this.mouseMoveTdbu);
+    const tdbuDisplayPosition = this.getTdbuShutterPosFromScreenPos(this.actualTdbuScreenPosition);
+    this.sendTdbuShutterPosition(this.cfg.tdbuEntityId(), tdbuDisplayPosition);
+  };
+  getTdbuShutterPosFromScreenPos(screenPosition) {
+    // Top rail: 0%=top edge at top (small screenPos), 100%=top edge at bottom (large screenPos)
+    // Direct mapping: no inversion needed
+    return Math.max(0, Math.min(100,
+      Math.round((screenPosition - this.offsetOpenedPx()) * SHUTTER_OPEN_PCT / this.coverSizeMovingDirectionPx())
+    ));
+  }
+  sendTdbuShutterPosition(entityId, displayPosition) {
+    // Re-apply tdbu_invert_percentage to convert display position back to device position
+    const devicePosition = this.cfg.tdbuInvertPercentage() ? this.cfg.invertPosition(displayPosition) : displayPosition;
+    this.callHassCoverService(entityId, ACTION_SHUTTER_SET_POS, { position: devicePosition });
+  }
+
   sendShutterPosition( entityId, position)
   {
     this.callHassCoverService(entityId,ACTION_SHUTTER_SET_POS, { position: this.cfg.applyInvertToPosition(position) });
@@ -2322,10 +2453,12 @@ class shutterCfg {
   #coverEntity=null;
   #batteryEntity=null;
   #signalEntity=null;
+  #tdbuEntity=null;
   #localize={};
   shutterState = NONE;
   batteryState = NONE;
   signalState = NONE;
+  tdbuState = NONE;
 
   constructor(hass,escConfig)
   {
@@ -2336,6 +2469,9 @@ class shutterCfg {
 
       this.setBatteryEntity(hass,escConfig[CONFIG_BATTERY_ENTITY_ID]);
       this.setSignalEntity(hass,escConfig[CONFIG_SIGNAL_ENTITY_ID]);
+      this.setTdbuEntity(hass,escConfig[CONFIG_TDBU_ENTITY_ID]);
+      this.tdbuEntityId(escConfig[CONFIG_TDBU_ENTITY_ID]);
+      this.tdbuInvertPercentage(!!escConfig[CONFIG_TDBU_INVERT_PCT]);
 
       this.debug(!!escConfig[CONFIG_DEBUG]);
 
@@ -2439,6 +2575,26 @@ class shutterCfg {
   // Get SignalInfo
   getSignalEntity(){
     return this.#signalEntity;
+  }
+  setTdbuEntity(hass, entityId){
+    this.#tdbuEntity = entityId ? new haEntity(hass, entityId) : null;
+  }
+  getTdbuEntity(){
+    return this.#tdbuEntity;
+  }
+  hasTdbu(){
+    return this.#tdbuEntity !== null;
+  }
+  tdbuEntityId(value = null){
+    return this.#getCfg(CONFIG_TDBU_ENTITY_ID, value);
+  }
+  tdbuInvertPercentage(value = null){
+    return this.#getCfg(CONFIG_TDBU_INVERT_PCT, value);
+  }
+  currentTdbuDevicePosition(){
+    let position = this.#tdbuEntity?.getCurrentPosition() ?? 0;
+    if (this.tdbuInvertPercentage()) position = this.invertPosition(position);
+    return position;
   }
 
 
@@ -3051,7 +3207,7 @@ class shutterCfg {
     }
     return text;
   }
-  computePositionText(position,tiltPosition){
+  computePositionText(position,tiltPosition,tdbuPositionOverride=null){
     //console.log(`computePositionText: position=${position}, tiltPosition=${tiltPosition}`);
     let positionText;
     if (NOT_KNOWN.includes(this.getCoverEntity().getState())){
@@ -3066,6 +3222,10 @@ class shutterCfg {
       if (this.showTilt()) {
         tiltPosition = this.currentUiTiltPosition(tiltPosition);
         positionText += ` / Tilt: ${tiltPosition}%`;
+      }
+      if (this.hasTdbu()) {
+        const tdbuPosition = (tdbuPositionOverride ?? this.currentTdbuDevicePosition()) ?? 0;
+        positionText += ` / Top: ${tdbuPosition}%`;
       }
     }
     return positionText;
@@ -3336,8 +3496,12 @@ class htmlCard{
       --esc-window-rotate: ${this.cfg.viewImageRotate()};
       --esc-button-rotate: ${this.cfg.buttonRotate()};
 
-      --esc-transform-slide:  ${this.enhancedShutter.transformSlide(this.actualScreenPosition)};
+      --esc-transform-slide:  ${this.enhancedShutter.transformSlide(this.cfg.hasTdbu() ? Math.max(0, this.actualScreenPosition - this.enhancedShutter.actualTdbuScreenPosition) : this.actualScreenPosition)};
       --esc-transform-picker: ${this.enhancedShutter.transformPicker(this.actualScreenPosition)};
+      --esc-transform-picker-tdbu: ${this.enhancedShutter.transformPicker(this.enhancedShutter.actualTdbuScreenPosition)};
+      --esc-tdbu-clip-top: ${this.enhancedShutter.actualTdbuScreenPosition}px;
+      --esc-tdbu-clip-height: ${Math.max(0, this.actualScreenPosition - this.enhancedShutter.actualTdbuScreenPosition)}px;
+      --esc-tdbu-rail-bottom-top: ${Math.max(0, this.actualScreenPosition - this.enhancedShutter.shutterBottomSize().y)}px;
       --esc-tilt-angle-deg: ${this.enhancedShutter.getTiltAngleDeg(this.enhancedShutter.react_TiltPosition)};
       --esc-tilt-angle-deg-graph: ${this.enhancedShutter.getTiltAngleDegGraph(this.enhancedShutter.react_TiltPosition)};
 
@@ -3558,17 +3722,33 @@ class htmlCard{
         ${this.cfg.isCoverFeatureActive(ESC_FEATURE_SET_POSITION)
           ? html`<div class="${ESC_CLASS_SELECTOR_PICKER}"></div>`
           : ''}
+        ${this.cfg.hasTdbu() && this.cfg.isCoverFeatureActive(ESC_FEATURE_SET_POSITION)
+          ? html`<div class="${ESC_CLASS_SELECTOR_PICKER_TDBU}"></div>`
+          : ''}
       </div>
     `;
   }
 
   showSlide(){
-     return html`
-        <div class="${ESC_CLASS_SELECTOR_SLIDE}">
-          ${this.showSlideSlats()}
-          <div class="${ESC_CLASS_SELECTOR_SLIDE_EDGE}"></div>
+    if (this.cfg.hasTdbu()) {
+      // TDBU: two rail edges are always visible outside the clip container.
+      // The clip container only clips the slat fabric to the gap between the rails.
+      return html`
+        <div class="${ESC_CLASS_SELECTOR_SLIDE_EDGE} ${ESC_CLASS_SELECTOR_SLIDE_TDBU_RAIL_TOP}"></div>
+        <div class="${ESC_CLASS_SELECTOR_SLIDE_TDBU_CLIP}">
+          <div class="${ESC_CLASS_SELECTOR_SLIDE}">
+            ${this.showSlideSlats()}
+          </div>
         </div>
+        <div class="${ESC_CLASS_SELECTOR_SLIDE_EDGE} ${ESC_CLASS_SELECTOR_SLIDE_TDBU_RAIL_BOTTOM}"></div>
       `;
+    }
+    return html`
+      <div class="${ESC_CLASS_SELECTOR_SLIDE}">
+        ${this.showSlideSlats()}
+        <div class="${ESC_CLASS_SELECTOR_SLIDE_EDGE}"></div>
+      </div>
+    `;
   }
   showSlideSlats(){
     // Only Tilt when SHowTilt and there is a size
