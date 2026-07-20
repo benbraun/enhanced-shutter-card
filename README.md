@@ -188,6 +188,9 @@ The settings are defined in the follwing logic:
 | shutter_preset               | string        | no       | roller-shutter                                | Yes    | Yes   | Several preset-shutters-setting-groups, which creates a good start-setting for a specific type of cover. See the table below for possible definitions and the settings of them                                                                                             |            |
 | battery_entity               | string        | No       | `null`                                        | Yes    | Yes   | EntityId of the sensor represenating the battery-level of the shutter (as a number), or `auto` for automatic search. For global setting just use `auto` for automatic search                                                                                               |            |
 | signal_entity                | string        | No       | `null`                                        | Yes    | Yes   | EntityId of the sensor represenating the Wireless signal-level of the shutter (as a number), or `auto` for automatic search. For global setting just use `auto` for automatic search                                                                                       |            |
+| tdbu_entity                  | string        | No       | `null`                                        | Yes    | Yes   | EntityId of the cover representing the top rail (bottom-up shade) of a Top-Down Bottom-Up blind. The main `entity` drives the bottom rail. See [Top-Down Bottom-Up (TDBU) blinds](#top-down-bottom-up-tdbu-blinds).                                                        |            |
+| tdbu_invert_percentage       | boolean       | No       | `false`                                       | Yes    | Yes   | Invert the position reading (and commands) of the `tdbu_entity`.                                                                                                                                                                                                           |            |
+| show_tdbu_slider             | boolean       | No       | `false`                                       | Yes    | Yes   | Show an extra slider that controls the TDBU top rail (only with `tdbu_entity`).                                                                                                                                                                                            |            |
 | show_group_members           | boolean       | No       | `false`                                       | Yes    | Yes   | When using a grouped-cover in the Card, set to 'true'to display the member covers in stead of the group-cover.                                                                                                                                                             |            |
 | passive_mode                 | boolean       | no       | `false`                                       | Yes    | Yes   | Interface works normal, but no action is sent to the shutters. A lock-icon is shown after the shutter-name.                                                                                                                                                                |            |
 | image_map                    | string        | No       | /local/community/enhanced-shutter-card        | Yes    | Yes   | map of the images. Change thsi when using own images.                                                                                                                                                                                                                      |            |
@@ -243,6 +246,30 @@ The settings are defined in the follwing logic:
 | disable_partial_open_buttons | boolean       | No       | `true`                                        | Yes    | Yes   | Show or hide the partial open buttons.                                                                                                                                                                                                                                     | deprecated |
 
 _Remark: you can also just give the entity ID (without to specify `entity:`) if you don't need to specify the other configurations._
+
+### Top-Down Bottom-Up (TDBU) blinds
+
+A TDBU blind has two rails: the bottom rail opens the window from the bottom
+(the regular cover `entity`), and the top rail opens it from the top
+(`tdbu_entity`). The card draws both rails with grab handles and clips the
+fabric to the gap between them.
+
+- Position semantics for `tdbu_entity`: `0` = top rail fully up (fabric covers
+  everything above the bottom rail), `100` = top rail fully down (retracted).
+  Use `tdbu_invert_percentage: true` if your integration reports the opposite.
+- Both rails can be dragged directly on the window; the drag snaps to the
+  nearest rail, and the rails can touch but never cross.
+- `show_tdbu_slider: true` adds a dedicated slider for the top rail.
+- TDBU requires `closing_direction: down` (the default); other directions show
+  a warning and render as a normal shutter.
+
+```yaml
+type: custom:enhanced-shutter-card
+entities:
+  - entity: cover.livingroom_blind_bottom
+    tdbu_entity: cover.livingroom_blind_top
+    show_tdbu_slider: true
+```
 
 ### Shutter Presets
 The following `shutter_preset` settings are available:

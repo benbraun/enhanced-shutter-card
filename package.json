@@ -3,12 +3,14 @@
   "scripts": {
     "clean": "rimraf dist",
     "build": "npm run clean && npx rollup -c",
-    "watch": "rollup -c --watch"
+    "watch": "rollup -c --watch",
+    "test:tdbu": "node test/tdbuSmoke.mjs"
   },
   "devDependencies": {
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@rollup/plugin-replace": "^5.0.0",
     "@rollup/plugin-terser": "^0.4.0",
+    "jsdom": "^29.1.1",
     "rimraf": "^6.1.3",
     "rollup": "^4.40.0",
     "rollup-plugin-copy": "^3.5.0"

@@ -50,6 +50,7 @@ export const ESC_CLASS_SELECTOR_SLIDE_TDBU = `${ESC_CLASS_SELECTOR_SLIDE}-tdbu`;
 export const ESC_CLASS_SELECTOR_SLIDE_TDBU_CLIP = `${ESC_CLASS_SELECTOR_SLIDE_TDBU}-clip`;
 export const ESC_CLASS_SELECTOR_SLIDE_TDBU_RAIL_TOP = `${ESC_CLASS_SELECTOR_SLIDE_TDBU}-rail-top`;
 export const ESC_CLASS_SELECTOR_SLIDE_TDBU_RAIL_BOTTOM = `${ESC_CLASS_SELECTOR_SLIDE_TDBU}-rail-bottom`;
+export const ESC_CLASS_SELECTOR_SLIDE_TDBU_HANDLE = `${ESC_CLASS_SELECTOR_SLIDE_TDBU}-handle`;
 export const ESC_CLASS_SELECTOR_PICKER_TDBU = `${ESC_CLASS_SELECTOR_PICKER}-tdbu`;
 
 export const ESC_CLASS_MOVEMENT_OVERLAY = `${ESC_CLASS_BASE_NAME}-movement-overlay`; // esc-shutter-movement-overlay
@@ -264,6 +265,7 @@ export const CONFIG_BATTERY_ENTITY_ID = 'battery_entity';
 export const CONFIG_SIGNAL_ENTITY_ID = 'signal_entity';
 export const CONFIG_TDBU_ENTITY_ID = 'tdbu_entity';  // Top-Down Bottom-Up: entity for the bottom-up shade
 export const CONFIG_TDBU_INVERT_PCT = 'tdbu_invert_percentage'; // invert position reading for the bottom-up shade entity
+export const CONFIG_SHOW_TDBU_SLIDER = 'show_tdbu_slider'; // optional slider for the TDBU top rail
 
 export const CONFIG_SHOW_GROUP_MEMBERS = 'show_group_members';
 
@@ -361,6 +363,7 @@ export const ESC_BATTERY_ENTITY_ID = null;
 export const ESC_SIGNAL_ENTITY_ID = null;
 export const ESC_TDBU_ENTITY_ID = null;
 export const ESC_TDBU_INVERT_PCT = false;
+export const ESC_SHOW_TDBU_SLIDER = false;
 
 export const ESC_SHOW_GROUP_MEMBERS = false;
 
@@ -481,6 +484,7 @@ export const CONFIG_DEFAULT ={
   [CONFIG_SIGNAL_ENTITY_ID]: ESC_SIGNAL_ENTITY_ID,
   [CONFIG_TDBU_ENTITY_ID]: ESC_TDBU_ENTITY_ID,
   [CONFIG_TDBU_INVERT_PCT]: ESC_TDBU_INVERT_PCT,
+  [CONFIG_SHOW_TDBU_SLIDER]: ESC_SHOW_TDBU_SLIDER,
 
   [CONFIG_NAME]: ESC_NAME,
   [CONFIG_PASSIVE_MODE]: ESC_PASSIVE_MODE,
@@ -790,9 +794,14 @@ export const SHUTTER_CSS =`
       }
       .${ESC_CLASS_SELECTOR_SLIDE_TDBU_CLIP} .${ESC_CLASS_SELECTOR_SLIDE} {
         z-index: 0;
+        top: 0;
+        bottom: auto;
+        left: 0;
+        height: 100%;
+        transform: none;
       }
       .${ESC_CLASS_SELECTOR_SLIDE_TDBU_CLIP} .${ESC_CLASS_SELECTOR_SLIDE_SLATS} {
-        height: var(--esc-tdbu-clip-height);
+        height: 100%;
       }
       .${ESC_CLASS_SELECTOR_SLIDE_TDBU_RAIL_TOP},
       .${ESC_CLASS_SELECTOR_SLIDE_TDBU_RAIL_BOTTOM} {
@@ -803,9 +812,24 @@ export const SHUTTER_CSS =`
       }
       .${ESC_CLASS_SELECTOR_SLIDE_TDBU_RAIL_TOP} {
         top: var(--esc-tdbu-clip-top);
+        transform: scaleY(-1); /* edge image reads as a top rail */
       }
       .${ESC_CLASS_SELECTOR_SLIDE_TDBU_RAIL_BOTTOM} {
         top: var(--esc-tdbu-rail-bottom-top);
+      }
+      .${ESC_CLASS_SELECTOR_SLIDE_TDBU_HANDLE} {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%,-50%); /* centered, so the rail-top scaleY flip is harmless */
+        width: 34px;
+        height: 7px;
+        border-radius: 4px;
+        background-color: var(--secondary-text-color, #808080);
+        border: 1px solid var(--card-background-color, #ffffff);
+        opacity: 0.7;
+        pointer-events: none;
+        z-index: 2;
       }
       .${ESC_CLASS_SELECTOR_PICKER_TDBU} {
         z-index: ${Z_INDEX_PICKER};

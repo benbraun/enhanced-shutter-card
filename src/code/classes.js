@@ -170,6 +170,16 @@ export class EnhancedShutterCardNew extends LitElement{
 
     let config = { ...configBase, ...configPreset, ...newConfigSub};
 
+    // TDBU is vertical-only: warn and disable for other closing directions
+    if (config[C.CONFIG_TDBU_ENTITY_ID] && config[C.CONFIG_CLOSING_DIRECTION] != C.DOWN){
+      this.messageManager.addMessage(
+        `[${C.CONFIG_TDBU_ENTITY_ID}] requires '${C.CONFIG_CLOSING_DIRECTION}: ${C.DOWN}', TDBU disabled!`,
+        C.HA_ALERT_WARNING,
+        id
+      );
+      config[C.CONFIG_TDBU_ENTITY_ID] = null;
+    }
+
     return config;
   }
   replaceKey(newConfigSub, key,oldKey){
@@ -713,7 +723,8 @@ export class EnhancedShutter extends LitElement
     this.screenPosition=-1;
     this.actualScreenPosition=-1; // position on the computerscreen
     this.actualTiltPosition=-1; // real tilt position
-    this.actualTdbuScreenPosition=0; // screen position of TDBU top rail (bottom-up shade)
+    this.topRailPx=0; // TDBU: screen position of the top rail (bottom-up shade)
+    this.actualTdbuPosition=0; // TDBU: top rail percent, symmetric with actualShutterPosition
     this.positionText ='';
     this.action = '#';
 
@@ -785,7 +796,7 @@ export class EnhancedShutter extends LitElement
       this.actualShutterPosition = this.cfg.currentDevicePosition();
       this.actualTiltPosition = this.react_TiltPosition;
     }else if (this.action=='user-drag-tdbu'){
-      // TDBU top rail dragging: actualTdbuScreenPosition is updated in mouseMoveTdbuPicker, keep it
+      // TDBU top rail dragging (picker or slider): position follows react_TdbuPosition
       this.actualScreenPosition =  this.defScreenPositionFromCurrentPosition();
       this.actualShutterPosition = this.cfg.currentDevicePosition()?? 0;
       this.actualTiltPosition = this.cfg.currentDeviceTiltPosition() ?? 0;
@@ -794,8 +805,16 @@ export class EnhancedShutter extends LitElement
       this.actualScreenPosition =  this.defScreenPositionFromCurrentPosition();
       this.actualShutterPosition = this.cfg.currentDevicePosition()?? 0;
       this.actualTiltPosition = this.cfg.currentDeviceTiltPosition() ?? 0;
-      // TDBU: top rail (bottom-up shade) screen position from device state
-      this.actualTdbuScreenPosition = this.defScreenPositionFromTdbuPosition();
+    }
+    if (this.cfg.hasTdbu()){
+      // TDBU single source of truth: top rail percent and px, clamped so rails may touch but never cross
+      this.actualTdbuPosition = (this.action=='user-drag-tdbu'
+        ? this.react_TdbuPosition
+        : this.cfg.currentTdbuDevicePosition()) ?? 0;
+      this.topRailPx = Math.min(
+        this.defScreenPositionFromTdbuPosition(this.actualTdbuPosition),
+        this.actualScreenPosition
+      );
     }
     this.react_TiltPosition = this.actualTiltPosition; // TODO: logical not needed, but actual it does: check
     this.react_ShutterPosition = this.actualShutterPosition;
@@ -817,6 +836,13 @@ export class EnhancedShutter extends LitElement
     const tdbuPicker = findElement(this, `.${C.ESC_CLASS_SELECTOR_PICKER_TDBU}`);
     if (tdbuPicker) {
       this.manageEvents(C.ADD_EVENT, C.MOUSEDOWN, tdbuPicker, this.mouseDownTdbuPicker);
+    }
+    // tdbuSlider (TDBU top rail)
+    if (this.cfg.hasTdbu() && this.cfg.showTdbuSliderBlock() && this.cfg.isCoverFeatureActive(C.ESC_FEATURE_SET_POSITION)){
+      this.tdbuSlider = findElement(this,`.${C.ESC_CLASS_SLIDER_CLASS}.tdbu`);
+      if (this.tdbuSlider) {
+        this.manageEvents(C.ADD_EVENT, C.MOUSEDOWN, this.tdbuSlider, this.mouseDownTdbuSlider);
+      }
     }
     // openCloseSlider
     if (this.cfg.showOpenCloseSliderBlock() && this.cfg.isCoverFeatureActive(C.ESC_FEATURE_SET_POSITION)){
@@ -1234,10 +1260,9 @@ export class EnhancedShutter extends LitElement
    * position=100: top edge at bottom of window (shade retracted, window open from bottom).
    * No invertPosition needed: 0%=covered, 100%=open maps directly to top-edge screen position.
    */
-  defScreenPositionFromTdbuPosition() {
+  defScreenPositionFromTdbuPosition(tdbuPosition=this.cfg.currentTdbuDevicePosition()) {
     if (!this.cfg.hasTdbu()) return 0;
-    const tdbuPosition = this.cfg.currentTdbuDevicePosition() ?? 0;
-    return this.offsetOpenedPx() + (this.coverSizeMovingDirectionPx() * tdbuPosition / 100);
+    return this.offsetOpenedPx() + (this.coverSizeMovingDirectionPx() * (tdbuPosition ?? 0) / 100);
   }
 
   actualGlobalWidthPx() {
@@ -1323,10 +1348,12 @@ export class EnhancedShutter extends LitElement
                            pickPoint.coord.y() - this.basePickPoint.coord.y());
     let delta_local = this.cfg.rotateBackOrtho(delta);
 
+    // TDBU: the bottom rail may touch but never cross the top rail
+    const minPx = this.cfg.hasTdbu() ? Math.max(this.coverOpenedPx(), this.defScreenPositionFromTdbuPosition()) : this.coverOpenedPx();
     let newScreenPosition =
       Math.round(boundary(
         this.basePickPoint.shutterScreenPos+delta_local.y(),
-        this.coverOpenedPx(),
+        minPx,
         this.coverClosedPx()
       ));
     return newScreenPosition;
@@ -1351,11 +1378,41 @@ export class EnhancedShutter extends LitElement
       //Disable default drag event
       event.preventDefault();
     }
+    // TDBU: the picker bands can overlap when rails are close; route to the nearest rail
+    if (this.cfg.hasTdbu() && this.nearestTdbuRail(event) == 'top'){
+      this.startTdbuDrag(event);
+    }else{
+      this.startOpenCloseDrag(event);
+    }
+  };
+  startOpenCloseDrag(event){
     this.action='user-drag-picker';
     this.getBasePickPoint(event);
     this.manageEvents(C.ADD_EVENT, C.MOUSEMOVE, this, this.mouseMoveOpenClosePicker);
     this.manageEvents(C.ADD_EVENT, C.MOUSEUP, window, this.mouseUpOpenClosePicker);
-  };
+  }
+  startTdbuDrag(event){
+    this.action='user-drag-tdbu';
+    this.react_TdbuPosition = this.cfg.currentTdbuDevicePosition() ?? 0; // click without move sends the current position
+    this.baseTdbuPickPoint = this.getPoint(event);
+    // anchor on device state, not render caches (a post-drag render can be one update behind)
+    this.baseTdbuPickPoint.shutterScreenPos = Math.min(
+      this.defScreenPositionFromTdbuPosition(),
+      this.defScreenPositionFromCurrentPosition()
+    );
+    this.manageEvents(C.ADD_EVENT, C.MOUSEMOVE, this, this.mouseMoveTdbuPicker);
+    this.manageEvents(C.ADD_EVENT, C.MOUSEUP, window, this.mouseUpTdbuPicker);
+  }
+  nearestTdbuRail(event){
+    // TDBU is vertical-only, so a plain vertical comparison within the selector rect works.
+    // Rail positions come from device state, not render caches.
+    const rect = this[C.ESC_CLASS_SELECTOR]?.getBoundingClientRect();
+    if (!rect) return 'top';
+    const localY = event.pageY - (rect.top + window.scrollY);
+    const distTop = Math.abs(localY - this.defScreenPositionFromTdbuPosition());
+    const distBottom = Math.abs(localY - this.defScreenPositionFromCurrentPosition());
+    return distTop <= distBottom ? 'top' : 'bottom';
+  }
   mouseDownTiltSlider = () => {
     this.action='user-drag-tilt';
     this.manageEvents(C.ADD_EVENT, C.MOUSEMOVE, this, this.mouseMoveTiltSlider);
@@ -1373,12 +1430,18 @@ export class EnhancedShutter extends LitElement
       //Disable default drag event
       event.preventDefault();
     }
-    this.action='user-drag-tdbu';
-    this.baseTdbuPickPoint = this.getPoint(event);
-    this.baseTdbuPickPoint.shutterScreenPos = this.actualTdbuScreenPosition;
-    this.manageEvents(C.ADD_EVENT, C.MOUSEMOVE, this, this.mouseMoveTdbuPicker);
-    this.manageEvents(C.ADD_EVENT, C.MOUSEUP, window, this.mouseUpTdbuPicker);
+    // TDBU: the picker bands can overlap when rails are close; route to the nearest rail
+    if (this.nearestTdbuRail(event) == 'bottom'){
+      this.startOpenCloseDrag(event);
+    }else{
+      this.startTdbuDrag(event);
+    }
   };
+  mouseDownTdbuSlider = () => {
+    this.action='user-drag-tdbu';
+    this.manageEvents(C.ADD_EVENT, C.MOUSEMOVE, this, this.mouseMoveTdbuSlider);
+    this.manageEvents(C.ADD_EVENT, C.MOUSEUP, window, this.mouseUpTdbuSlider);
+  }
 /**
  * MOUSE MOVE
  */
@@ -1413,13 +1476,17 @@ export class EnhancedShutter extends LitElement
     const delta = new xyPair(pickPoint.coord.x() - this.baseTdbuPickPoint.coord.x(),
                              pickPoint.coord.y() - this.baseTdbuPickPoint.coord.y());
     const delta_local = this.cfg.rotateBackOrtho(delta);
-    this.actualTdbuScreenPosition = Math.round(boundary(
+    const screenPosition = Math.round(boundary(
       this.baseTdbuPickPoint.shutterScreenPos + delta_local.y(),
       this.coverOpenedPx(),
-      this.coverClosedPx()
+      Math.min(this.coverClosedPx(), this.defScreenPositionFromCurrentPosition()) // not past the bottom rail
     ));
-    this.react_TdbuPosition = this.getTdbuShutterPosFromScreenPos(this.actualTdbuScreenPosition);
+    this.react_TdbuPosition = this.getTdbuShutterPosFromScreenPos(screenPosition);
   };
+  mouseMoveTdbuSlider = () => {
+    this.action='user-drag-tdbu';
+    this.react_TdbuPosition = this.getTdbuSliderPosition();
+  }
 /**
  * MOUSE UP
  */
@@ -1450,9 +1517,17 @@ export class EnhancedShutter extends LitElement
     if (event.pageY === undefined) return;
     this.manageEvents(C.REMOVE_EVENT, C.MOUSEMOVE, this, this.mouseMoveTdbuPicker);
     this.manageEvents(C.REMOVE_EVENT, C.MOUSEUP, window, this.mouseUpTdbuPicker);
-    const tdbuDisplayPosition = this.getTdbuShutterPosFromScreenPos(this.actualTdbuScreenPosition);
-    this.sendTdbuShutterPosition(this.cfg.tdbuEntityId(), tdbuDisplayPosition);
+    this.sendTdbuShutterPosition(this.cfg.tdbuEntityId(), this.react_TdbuPosition ?? this.actualTdbuPosition);
   };
+  mouseUpTdbuSlider = () => {
+    this.manageEvents(C.REMOVE_EVENT, C.MOUSEMOVE, this, this.mouseMoveTdbuSlider);
+    this.manageEvents(C.REMOVE_EVENT, C.MOUSEUP, window, this.mouseUpTdbuSlider);
+    this.react_TdbuPosition = this.getTdbuSliderPosition();
+    this.sendTdbuShutterPosition(this.cfg.tdbuEntityId(), this.react_TdbuPosition);
+  }
+  getTdbuSliderPosition(){
+    return parseFloat(this.tdbuSlider.value) ?? 0;
+  }
   getTdbuShutterPosFromScreenPos(screenPosition){
     // Top rail: 0% = top edge at top (small screenPos), 100% = top edge at bottom (large screenPos): direct mapping
     return Math.max(0, Math.min(100,
@@ -1492,8 +1567,11 @@ export class EnhancedShutter extends LitElement
   }
   sendTdbuShutterPosition( entityId, displayPosition)
   {
+    // rails may touch but never cross: cap at the bottom rail's equivalent position
+    const maxPosition = this.getTdbuShutterPosFromScreenPos(this.defScreenPositionFromCurrentPosition());
+    const position = Math.min(displayPosition, maxPosition);
     // re-apply tdbu_invert_percentage to convert display position back to device position
-    const devicePosition = this.cfg.tdbuInvertPercentage() ? this.cfg.invertPosition(displayPosition) : displayPosition;
+    const devicePosition = this.cfg.tdbuInvertPercentage() ? this.cfg.invertPosition(position) : position;
     this.callHassCoverService(entityId,C.ACTION_SHUTTER_SET_POS, { position: devicePosition });
   }
   callHassCoverService(entityId,command,args='')
@@ -1589,6 +1667,7 @@ export class shutterCfg {
 
     this.tdbuEntityId(escConfig[C.CONFIG_TDBU_ENTITY_ID]);
     this.tdbuInvertPercentage(!!escConfig[C.CONFIG_TDBU_INVERT_PCT]);
+    this.showTdbuSliderBlock(!!escConfig[C.CONFIG_SHOW_TDBU_SLIDER]);
     this.setTdbuEntity(hass,this.tdbuEntityId());
     this.debug(!!escConfig[C.CONFIG_DEBUG]);
 
@@ -1643,7 +1722,7 @@ export class shutterCfg {
 
     this.alwaysPercentage(!!escConfig[C.CONFIG_ALWAYS_PCT]);
     this.disableEndButtons(!!escConfig[C.CONFIG_DISABLE_END_BUTTONS]);
-    this.pickerOverlapPx(C.ESC_PICKER_OVERLAP_PX);
+    this.pickerOverlapPx(escConfig[C.CONFIG_PICKER_OVERLAP_PX] ?? C.ESC_PICKER_OVERLAP_PX);
 
     this.showName(escConfig[C.CONFIG_SHOW_NAME]);
     this.showOpening(escConfig[C.CONFIG_SHOW_OPENING]);
@@ -1873,6 +1952,9 @@ export class shutterCfg {
   }
   tdbuInvertPercentage(value = null){
     return this.#getCfg(C.CONFIG_TDBU_INVERT_PCT,value);
+  }
+  showTdbuSliderBlock(value = null){
+    return this.#getCfg(C.CONFIG_SHOW_TDBU_SLIDER,value);
   }
 
   getImage(imageType){

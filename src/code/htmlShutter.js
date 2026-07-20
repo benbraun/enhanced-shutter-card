@@ -42,11 +42,11 @@ export class htmlShutter{
       --esc-window-rotate: ${this.cfg.viewImageRotate()};
       --esc-button-rotate: ${this.cfg.buttonRotate()};
 
-      --esc-transform-slide:  ${this.enhancedShutter.transformSlide(this.cfg.hasTdbu() ? Math.max(0, this.actualScreenPosition - this.enhancedShutter.actualTdbuScreenPosition) : this.actualScreenPosition)};
+      --esc-transform-slide:  ${this.enhancedShutter.transformSlide(this.actualScreenPosition)};
       --esc-transform-picker: ${this.enhancedShutter.transformPicker(this.actualScreenPosition)};
-      --esc-transform-picker-tdbu: ${this.enhancedShutter.transformPicker(this.enhancedShutter.actualTdbuScreenPosition)};
-      --esc-tdbu-clip-top: ${this.enhancedShutter.actualTdbuScreenPosition}px;
-      --esc-tdbu-clip-height: ${Math.max(0, this.actualScreenPosition - this.enhancedShutter.actualTdbuScreenPosition)}px;
+      --esc-transform-picker-tdbu: ${this.enhancedShutter.transformPicker(this.enhancedShutter.topRailPx)};
+      --esc-tdbu-clip-top: ${this.enhancedShutter.topRailPx}px;
+      --esc-tdbu-clip-height: ${Math.max(0, this.actualScreenPosition - this.enhancedShutter.topRailPx)}px;
       --esc-tdbu-rail-bottom-top: ${Math.max(0, this.actualScreenPosition - this.enhancedShutter.shutterBottomSize().y())}px;
       --esc-tilt-angle-deg: ${this.enhancedShutter.getTiltAngleDeg(this.enhancedShutter.react_TiltPosition)};
       --esc-tilt-angle-deg-graph: ${this.enhancedShutter.getTiltAngleDegGraph(this.enhancedShutter.react_TiltPosition)};

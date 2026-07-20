@@ -21,6 +21,7 @@ export class htmlBlock
     this.actualScreenPosition = shutter.actualScreenPosition;
     this.actualTiltPosition = shutter.actualTiltPosition;
     this.actualShutterPosition = shutter.actualShutterPosition;
+    this.actualTdbuPosition = shutter.actualTdbuPosition;
     //console_log("====>>>",shutter.actualScreenPosition,shutter.actualTiltPosition,shutter.actualShutterPosition);
   }
   show(){
@@ -325,9 +326,7 @@ export class htmlBlockName extends htmlBlock{
 }
 export class htmlBlockState extends htmlBlock{
   defineHtml(){
-    // TDBU: while dragging the top rail, show the live drag position instead of the device position
-    const tdbuPositionOverride = this.shutter.action=='user-drag-tdbu' ? this.shutter.react_TdbuPosition : null;
-    const positionText =this.cfg.computePositionText(this.actualShutterPosition,this.actualTiltPosition,tdbuPositionOverride);
+    const positionText =this.cfg.computePositionText(this.actualShutterPosition,this.actualTiltPosition,this.actualTdbuPosition);
 
     this.setHtmlString(html`
       ${this.cfg.showOpening()
@@ -389,6 +388,7 @@ export class htmlBlockMiddle extends htmlBlock{
 
     const leftButtonsBlock = new htmlBlockLeftButtons(this.shutter);
     const openCloseSliderBlock = new htmlBlockOpenCloseSlider(this.shutter);
+    const tdbuSliderBlock = new htmlBlockTdbuSlider(this.shutter);
     const centralWindowBlock = new htmlBlockCentralWindow(this.shutter);
     const tiltSectionBlock = new htmlBlockTiltSection(this.shutter);
     const rightButtonsBlock = new htmlBlockRightButtons(this.shutter);
@@ -397,6 +397,7 @@ export class htmlBlockMiddle extends htmlBlock{
       <div class="${C.ESC_CLASS_MIDDLE}">
         ${this.cfg.buttonsLeftActive() ? leftButtonsBlock.show() : html``}
         ${this.cfg.showOpenCloseSliderBlock() && this.featurePosition ? openCloseSliderBlock.show() : html``}
+        ${this.cfg.hasTdbu() && this.cfg.showTdbuSliderBlock() && this.featurePosition ? tdbuSliderBlock.show() : html``}
         ${centralWindowBlock.show()}
         ${this.cfg.showPartialOpenButtons() || this.cfg.canTilt()
           ? html`
@@ -411,12 +412,14 @@ export class htmlBlockMiddle extends htmlBlock{
   defineSize(){
     const leftButtonsBlock = new htmlBlockLeftButtons(this.shutter);
     const openCloseSliderBlock = new htmlBlockOpenCloseSlider(this.shutter);
+    const tdbuSliderBlock = new htmlBlockTdbuSlider(this.shutter);
     const centralWindowBlock = new htmlBlockCentralWindow(this.shutter);
     const tiltSectionBlock = new htmlBlockTiltSection(this.shutter);
     const rightButtonsBlock = new htmlBlockRightButtons(this.shutter);
 
     let xyLeftButtons = leftButtonsBlock.size();
     let xyOpenCloseSlider = this.cfg.showOpenCloseSliderBlock() && this.featurePosition ? openCloseSliderBlock.size() : new xyPair();
+    let xyTdbuSlider = this.cfg.hasTdbu() && this.cfg.showTdbuSliderBlock() && this.featurePosition ? tdbuSliderBlock.size() : new xyPair();
     let xyCentralWindow = centralWindowBlock.size();
     let xyTiltSection = this.cfg.canTilt() ? tiltSectionBlock.size(): new xyPair();
     let xyRightButtons = this.cfg.showPartialOpenButtons() ? rightButtonsBlock.size() : new xyPair();
@@ -425,10 +428,12 @@ export class htmlBlockMiddle extends htmlBlock{
     let xy;
     if (this.cfg.buttonGroupInRow()){
       xy = this.gridAddHorizontal(xyLeftButtons,xyOpenCloseSlider);
+      xy = this.gridAddHorizontal(xy,xyTdbuSlider);
       xy = this.gridAddHorizontal(xy,xyCentralWindow);
       xy = this.gridAddHorizontal(xy,xyRight);
     }else{
       xy = this.gridAddVertical(xyLeftButtons,xyOpenCloseSlider);
+      xy = this.gridAddVertical(xy,xyTdbuSlider);
       xy = this.gridAddVertical(xy,xyCentralWindow);
       xy = this.gridAddVertical(xy,xyRight);
 
@@ -706,6 +711,25 @@ export class htmlBlockOpenCloseSlider extends htmlBlock{
     this.setXySize(xy);
   }
 }
+export class htmlBlockTdbuSlider extends htmlBlock{
+  defineHtml(){
+    this.setHtmlString(html`
+      <div class="${C.ESC_CLASS_SLIDER_WRAP}">
+        <input type="range" class ="${C.ESC_CLASS_SLIDER_CLASS} tdbu" min="0" max="100" value="${this.actualTdbuPosition}">
+      </div>
+    `);
+  }
+  defineSize(){
+    // same <input type="range"> box as the open/close slider
+    let width= 20;
+    let height = 129;
+    let zoom = this.cfg.buttonScaleFactor();
+
+    let xy = new xyPair(zoom*width,zoom*height);
+    if (!this.cfg.buttonGroupInRow()) xy.switch();
+    this.setXySize(xy);
+  }
+}
 export class htmlBlockTiltSection extends htmlBlock{
 
   tilt_position = this.cfg.isCoverFeatureActive(C.ESC_FEATURE_SET_TILT_POSITION)
@@ -779,13 +803,17 @@ export class htmlBlockCentralWindow extends htmlBlock{
       // TDBU: two rail edges are always visible outside the clip container.
       // The clip container only clips the slat fabric to the gap between the rails.
       return html`
-        <div class="${C.ESC_CLASS_SELECTOR_SLIDE_EDGE} ${C.ESC_CLASS_SELECTOR_SLIDE_TDBU_RAIL_TOP}"></div>
+        <div class="${C.ESC_CLASS_SELECTOR_SLIDE_EDGE} ${C.ESC_CLASS_SELECTOR_SLIDE_TDBU_RAIL_TOP}">
+          <div class="${C.ESC_CLASS_SELECTOR_SLIDE_TDBU_HANDLE}"></div>
+        </div>
         <div class="${C.ESC_CLASS_SELECTOR_SLIDE_TDBU_CLIP}">
           <div class="${C.ESC_CLASS_SELECTOR_SLIDE}">
             ${this.showSlideSlats(this.shutter)}
           </div>
         </div>
-        <div class="${C.ESC_CLASS_SELECTOR_SLIDE_EDGE} ${C.ESC_CLASS_SELECTOR_SLIDE_TDBU_RAIL_BOTTOM}"></div>
+        <div class="${C.ESC_CLASS_SELECTOR_SLIDE_EDGE} ${C.ESC_CLASS_SELECTOR_SLIDE_TDBU_RAIL_BOTTOM}">
+          <div class="${C.ESC_CLASS_SELECTOR_SLIDE_TDBU_HANDLE}"></div>
+        </div>
       `;
     }
     return html`
