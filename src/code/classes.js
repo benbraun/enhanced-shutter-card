@@ -1870,6 +1870,10 @@ export class shutterCfg {
   getTdbuState(haEntity=this.getTdbuEntity()){
     return haEntity ? `${haEntity.getState()}-${haEntity.getCurrentPosition()}` : C.NONE;
   }
+  tdbuIsMoving(){
+    const state = this.getTdbuEntity()?.getState();
+    return state === C.SHUTTER_STATE_OPENING || state === C.SHUTTER_STATE_CLOSING;
+  }
   currentTdbuDevicePosition(){
     let position = this.#tdbuEntity?.getCurrentPosition() ?? 0;
     if (this.tdbuInvertPercentage()) position = this.invertPosition(position);

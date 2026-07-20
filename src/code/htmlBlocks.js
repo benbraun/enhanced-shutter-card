@@ -609,7 +609,7 @@ export class htmlBlockTopRailButtons extends htmlBlock{
       ? html`
         <div class="${C.ESC_CLASS_BUTTONS}">
           ${this.button(C.UP, 'mdi:arrow-up', 'Top rail up')}
-          ${this.button(C.ACTION_SHUTTER_STOP, 'mdi:stop', 'Top rail stop')}
+          ${this.cfg.tdbuIsMoving() ? this.button(C.ACTION_SHUTTER_STOP, 'mdi:stop', 'Top rail stop') : ''}
           ${this.button(C.DOWN, 'mdi:arrow-down', 'Top rail down')}
         </div>`
       : html``);

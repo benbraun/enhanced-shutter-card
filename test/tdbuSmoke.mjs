@@ -47,18 +47,18 @@ window.Element.prototype.getBoundingClientRect = function () {
 
 // ---- hass stub ----------------------------------------------------------
 const serviceCalls = [];
-function cover(id, pos, name) {
+function cover(id, pos, name, state = 'open') {
   return {
     entity_id: id,
-    state: 'open',
+    state,
     attributes: { current_position: pos, friendly_name: name, supported_features: 15 },
   };
 }
-function makeHass(mainPos, tdbuPos) {
+function makeHass(mainPos, tdbuPos, tdbuState = 'open', mainState = 'open') {
   return {
     states: {
-      'cover.main': cover('cover.main', mainPos, 'Main blind'),
-      'cover.top_rail': cover('cover.top_rail', tdbuPos, 'Top rail'),
+      'cover.main': cover('cover.main', mainPos, 'Main blind', mainState),
+      'cover.top_rail': cover('cover.top_rail', tdbuPos, 'Top rail', tdbuState),
       'cover.plain': cover('cover.plain', 60, 'Plain blind'),
       'cover.sideways': cover('cover.sideways', 50, 'Sideways blind'),
     },
@@ -281,8 +281,12 @@ check('fully-open + drag up grabs the top rail (tdbu)',
 card.hass = makeHass(30, 30);
 await card.updateComplete; await settle(); await tdbuShutter.updateComplete;
 const railBtn = (label) => sr?.querySelector(`ha-icon-button[label="${label}"]`);
-check('TDBU top-rail button column renders (up/stop/down)',
-  !!railBtn('Top rail up') && !!railBtn('Top rail stop') && !!railBtn('Top rail down'));
+check('TDBU top-rail up/down buttons render',
+  !!railBtn('Top rail up') && !!railBtn('Top rail down'));
+check('TDBU top-rail STOP hidden while the rail is idle',
+  !railBtn('Top rail stop'));
+const mainStopBtn = () => sr?.querySelector('ha-icon-button[label="ui.card.cover.stop_cover"]');
+check('main STOP hidden while the cover is idle (movement-only default)', !mainStopBtn());
 check('plain shutter has no top-rail buttons',
   !srPlain?.querySelector('ha-icon-button[label="Top rail up"]'));
 
@@ -300,6 +304,11 @@ check('Top rail down sends set_cover_position to tdbu entity, capped at bottom r
   !!call && call.service === 'set_cover_position' && call.data.entity_id === 'cover.top_rail' &&
   call.data.position > 0 && call.data.position <= 70, JSON.stringify(call));
 
+// moving -> both STOP buttons appear
+card.hass = makeHass(30, 30, 'opening', 'closing');
+await card.updateComplete; await settle(); await tdbuShutter.updateComplete;
+check('TDBU top-rail STOP appears while the rail is moving', !!railBtn('Top rail stop'));
+check('main STOP appears while the cover is moving', !!mainStopBtn());
 serviceCalls.length = 0;
 railBtn('Top rail stop')?.dispatchEvent(new window.Event('click', { bubbles: true }));
 call = serviceCalls.at(-1);

@@ -457,7 +457,10 @@ export const ESC_MAX_RESIZE_WIDTH_PCT  = 500;
 export const ESC_MIN_RESIZE_HEIGHT_PCT =  20;
 export const ESC_MAX_RESIZE_HEIGHT_PCT = 500;
 
-export const ESC_BUTTON_STOP_HIDE_STATES = [];
+// Stop is only meaningful while the cover is moving, so by default hide it in
+// every non-moving state (open / closed / partially open). An explicit
+// button_stop_hide_states in the config overrides this.
+export const ESC_BUTTON_STOP_HIDE_STATES = [SHUTTER_STATE_OPEN, SHUTTER_STATE_CLOSED, SHUTTER_STATE_PARTIAL_OPEN];
 export const ESC_BUTTON_OPENED_HIDE_STATES = [];
 export const ESC_BUTTON_CLOSED_HIDE_STATES = [];
 
