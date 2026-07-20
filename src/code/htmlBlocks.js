@@ -780,7 +780,9 @@ export class htmlBlockCentralWindow extends htmlBlock{
             </div>
           </div>
           ${this.cfg.isCoverFeatureActive(C.ESC_FEATURE_SET_POSITION)
-            ? html`<div class="${C.ESC_CLASS_SELECTOR_PICKER}"></div>`
+            ? html`<div class="${C.ESC_CLASS_SELECTOR_PICKER}">
+                ${this.cfg.hasTdbu() ? '' : html`<div class="${C.ESC_CLASS_SELECTOR_SLIDE_HANDLE}"></div>`}
+              </div>`
             : ''}
           ${this.cfg.hasTdbu() && this.cfg.isCoverFeatureActive(C.ESC_FEATURE_SET_POSITION)
             ? html`<div class="${C.ESC_CLASS_SELECTOR_PICKER_TDBU}"></div>`
@@ -819,9 +821,7 @@ export class htmlBlockCentralWindow extends htmlBlock{
     return html`
         <div class="${C.ESC_CLASS_SELECTOR_SLIDE}">
           ${this.showSlideSlats(this.shutter)}
-          <div class="${C.ESC_CLASS_SELECTOR_SLIDE_EDGE}">
-            <div class="${C.ESC_CLASS_SELECTOR_SLIDE_HANDLE}"></div>
-          </div>
+          <div class="${C.ESC_CLASS_SELECTOR_SLIDE_EDGE}"></div>
         </div>
       `;
   }

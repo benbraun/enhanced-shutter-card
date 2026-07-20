@@ -784,7 +784,6 @@ export const SHUTTER_CSS =`
         background-image: var(--esc-slide-background-main-image);
       }
       .${ESC_CLASS_SELECTOR_SLIDE_EDGE} {
-        position: relative; /* containing block for the grab handle */
         height: var(--esc-slide-edge-height);
         background-position: var(--esc-slide-background-edge-position);
         background-image: var(--esc-slide-background-edge-image);

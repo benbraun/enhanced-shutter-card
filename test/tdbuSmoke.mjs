@@ -141,8 +141,11 @@ check('position text contains Top: 30%', positionText.includes('Top: 30'), `text
 const srPlain = plainShutter?.shadowRoot;
 check('plain shutter has classic slide edge inside slide',
   !!srPlain?.querySelector('.esc-shutter-selector-slide > .esc-shutter-selector-slide-edge'));
-check('plain shutter has one grab handle on its bottom rail',
-  srPlain?.querySelectorAll('.esc-shutter-selector-slide-edge .esc-shutter-selector-slide-handle').length === 1);
+check('plain shutter hosts its grab handle in the picker (above the frame), not the fabric edge',
+  srPlain?.querySelectorAll('.esc-shutter-selector-picker .esc-shutter-selector-slide-handle').length === 1 &&
+  srPlain?.querySelectorAll('.esc-shutter-selector-slide-edge .esc-shutter-selector-slide-handle').length === 0);
+check('TDBU main picker has no duplicate handle (rails carry them)',
+  sr?.querySelectorAll('.esc-shutter-selector-picker .esc-shutter-selector-slide-handle').length === 0);
 check('plain shutter has no TDBU nodes',
   !srPlain?.querySelector('.esc-shutter-selector-slide-tdbu-clip') &&
   !srPlain?.querySelector('.esc-shutter-selector-picker-tdbu'));
