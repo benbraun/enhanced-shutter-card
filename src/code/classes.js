@@ -1378,12 +1378,13 @@ export class EnhancedShutter extends LitElement
       //Disable default drag event
       event.preventDefault();
     }
-    // TDBU: the picker bands can overlap when rails are close; route to the nearest rail
-    if (this.cfg.hasTdbu() && this.nearestTdbuRail(event) == 'top'){
-      this.startTdbuDrag(event);
-    }else{
-      this.startOpenCloseDrag(event);
+    // TDBU: when the rail bands overlap, the nearest rail is ambiguous; let the
+    // drag direction decide. Otherwise route to the nearest rail.
+    if (this.cfg.hasTdbu()){
+      if (this.railsOverlap()){ this.startPendingTdbuDrag(event); return; }
+      if (this.nearestTdbuRail(event) == 'top'){ this.startTdbuDrag(event); return; }
     }
+    this.startOpenCloseDrag(event);
   };
   startOpenCloseDrag(event){
     this.action='user-drag-picker';
@@ -1430,12 +1431,62 @@ export class EnhancedShutter extends LitElement
       //Disable default drag event
       event.preventDefault();
     }
-    // TDBU: the picker bands can overlap when rails are close; route to the nearest rail
+    // TDBU: when the rail bands overlap, the nearest rail is ambiguous; let the
+    // drag direction decide. Otherwise route to the nearest rail.
+    if (this.railsOverlap()){ this.startPendingTdbuDrag(event); return; }
     if (this.nearestTdbuRail(event) == 'bottom'){
       this.startOpenCloseDrag(event);
     }else{
       this.startTdbuDrag(event);
     }
+  };
+  railsOverlap(){
+    // The two picker bands overlap (nearest rail ambiguous) when the rails are
+    // within a full band of each other. Positions come from device state.
+    const gapPx = Math.abs(this.defScreenPositionFromCurrentPosition() - this.defScreenPositionFromTdbuPosition());
+    return gapPx <= 2 * this.cfg.pickerOverlapPx();
+  }
+  startPendingTdbuDrag(event){
+    // Rails overlap: defer the rail choice to the first decisive vertical move.
+    // Seed both rail bases now so either drag can continue seamlessly from mousedown.
+    this.action='user-drag-tdbu-pending';
+    this.getBasePickPoint(event); // bottom rail (main cover)
+    this.baseTdbuPickPoint = this.getPoint(event); // top rail (tdbu)
+    this.baseTdbuPickPoint.shutterScreenPos = Math.min(
+      this.defScreenPositionFromTdbuPosition(),
+      this.defScreenPositionFromCurrentPosition()
+    );
+    this.react_TdbuPosition = this.cfg.currentTdbuDevicePosition() ?? 0;
+    this.pendingTdbuBasePoint = this.getPoint(event);
+    this.manageEvents(C.ADD_EVENT, C.MOUSEMOVE, this, this.mouseMovePendingTdbu);
+    this.manageEvents(C.ADD_EVENT, C.MOUSEUP, window, this.mouseUpPendingTdbu);
+  }
+  mouseMovePendingTdbu = (event) => {
+    if (event.pageY === undefined) return;
+    const pickPoint = this.getPoint(event);
+    const delta = new xyPair(pickPoint.coord.x() - this.pendingTdbuBasePoint.coord.x(),
+                             pickPoint.coord.y() - this.pendingTdbuBasePoint.coord.y());
+    const delta_local = this.cfg.rotateBackOrtho(delta);
+    if (Math.abs(delta_local.y()) < C.TDBU_DRAG_DIRECTION_THRESHOLD_PX) return; // wait for a clear direction
+    this.manageEvents(C.REMOVE_EVENT, C.MOUSEMOVE, this, this.mouseMovePendingTdbu);
+    this.manageEvents(C.REMOVE_EVENT, C.MOUSEUP, window, this.mouseUpPendingTdbu);
+    if (delta_local.y() > 0){
+      // dragging down -> move the bottom rail (main cover), e.g. close from fully open
+      this.manageEvents(C.ADD_EVENT, C.MOUSEMOVE, this, this.mouseMoveOpenClosePicker);
+      this.manageEvents(C.ADD_EVENT, C.MOUSEUP, window, this.mouseUpOpenClosePicker);
+      this.mouseMoveOpenClosePicker(event);
+    }else{
+      // dragging up -> move the top rail (tdbu)
+      this.manageEvents(C.ADD_EVENT, C.MOUSEMOVE, this, this.mouseMoveTdbuPicker);
+      this.manageEvents(C.ADD_EVENT, C.MOUSEUP, window, this.mouseUpTdbuPicker);
+      this.mouseMoveTdbuPicker(event);
+    }
+  };
+  mouseUpPendingTdbu = (event) => {
+    // Released without a decisive drag: cancel, send nothing.
+    this.manageEvents(C.REMOVE_EVENT, C.MOUSEMOVE, this, this.mouseMovePendingTdbu);
+    this.manageEvents(C.REMOVE_EVENT, C.MOUSEUP, window, this.mouseUpPendingTdbu);
+    this.action='user-pick';
   };
   mouseDownTdbuSlider = () => {
     this.action='user-drag-tdbu';

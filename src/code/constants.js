@@ -445,6 +445,9 @@ export const ESC_DISABLE_PARTIAL_OPEN_BUTTONS = true;
 export const ESC_SHOW_PARTIAL_OPEN_BUTTONS = false;
 export const ESC_SHOW_WINDOW = true;
 export const ESC_PICKER_OVERLAP_PX = 20;
+// TDBU: how many px of vertical drag disambiguates which rail to move when the
+// two rail picker bands overlap (rails close together / fully open or closed).
+export const TDBU_DRAG_DIRECTION_THRESHOLD_PX = 4;
 export const ESC_CURRENT_POSITION = 0;
 
 export const ESC_MIN_RESIZE_WIDTH_PCT  =  20;

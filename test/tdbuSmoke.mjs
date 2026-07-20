@@ -247,12 +247,45 @@ if (tdbuSlider) {
   check('slider drag sends set_cover_position 55 to tdbu entity', false, 'slider not found');
 }
 
+// ---- 5b. fully open (rails overlap at top): direction decides the rail ---
+// main=100 (bottom rail raised to top), tdbu=0 (top rail at top) -> bands overlap.
+card.hass = makeHass(100, 0);
+await card.updateComplete; await settle(); await tdbuShutter.updateComplete;
+
+// drag DOWN near the top: must grab the BOTTOM rail (main) to close it
+serviceCalls.length = 0;
+fire(tdbuPicker, 'mousedown', 5);
+fire(tdbuShutter, 'mousemove', 60); // decisive downward move
+fire(tdbuShutter, 'mousemove', 120);
+await tdbuShutter.updateComplete;
+fire(window, 'mouseup', 120);
+call = serviceCalls.find((c) => c.service === 'set_cover_position');
+check('fully-open + drag down grabs the bottom rail (main), not the top rail',
+  !!call && call.data.entity_id === 'cover.main', JSON.stringify(serviceCalls));
+check('fully-open downward drag closes the bottom rail (position < 100)',
+  !!call && call.data.position < 100, `pos ${call?.data?.position}`);
+
+// drag UP near the top: must grab the TOP rail (tdbu)
+card.hass = makeHass(100, 0);
+await card.updateComplete; await settle(); await tdbuShutter.updateComplete;
+serviceCalls.length = 0;
+fire(tdbuPicker, 'mousedown', 120);
+fire(tdbuShutter, 'mousemove', 60); // decisive upward move
+await tdbuShutter.updateComplete;
+fire(window, 'mouseup', 60);
+call = serviceCalls.find((c) => c.service === 'set_cover_position');
+check('fully-open + drag up grabs the top rail (tdbu)',
+  !!call && call.data.entity_id === 'cover.top_rail', JSON.stringify(serviceCalls));
+
 // ---- 6. hass update re-renders geometry ---------------------------------
+card.hass = makeHass(30, 30); // establish a fresh baseline after the overlap tests
+await card.updateComplete; await settle(); await tdbuShutter.updateComplete;
+const clipTopBase = clipTopOf(styleOf());
 card.hass = makeHass(30, 60);
 await card.updateComplete; await settle(); await tdbuShutter.updateComplete;
 const styleAfter = styleOf();
 check('hass update (pos 30->60) moves clip-top down',
-  clipTopOf(styleAfter) > clipTop0, `was ${clipTop0}, got ${clipTopOf(styleAfter)}`);
+  clipTopOf(styleAfter) > clipTopBase, `was ${clipTopBase}, got ${clipTopOf(styleAfter)}`);
 check('position text updates to Top: 60%', posTextNow().includes('Top: 60'), `text="${posTextNow()}"`);
 
 console.log(failures === 0 ? '\nALL CHECKS PASSED' : `\n${failures} CHECK(S) FAILED`);
