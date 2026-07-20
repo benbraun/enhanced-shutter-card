@@ -109,6 +109,11 @@ export const SHUTTER_STATE_OPENING = 'opening';
 export const SHUTTER_STATE_CLOSING = 'closing';
 export const SHUTTER_STATE_PARTIAL_OPEN = 'partial_open'; // speudo state
 
+// Duration/easing used to glide the shutter graphic between position updates
+// while the cover is opening/closing. Slightly longer than the typical update
+// interval so successive updates retarget a still-running transition smoothly.
+export const MOTION_TRANSITION = '0.3s linear';
+
 
 export const SHUTTER_STATES = [
   SHUTTER_STATE_OPEN,
@@ -712,6 +717,7 @@ export const SHUTTER_CSS =`
         cursor: pointer;
         transform-origin: center;
         transform: var(--esc-transform-picker);
+        transition: var(--esc-motion-transition-transform, none);
         touch-action: none;
         user-select: none;
       }
@@ -725,6 +731,7 @@ export const SHUTTER_CSS =`
         bottom: 100%;
         transform-origin: bottom;
         transform: var(--esc-transform-slide);
+        transition: var(--esc-motion-transition-transform, none);
         image-rendering: auto;
         image-rendering: pixelated;
         image-rendering: crisp-edges;
@@ -790,6 +797,7 @@ export const SHUTTER_CSS =`
         width: 100%;
         top: var(--esc-tdbu-clip-top);
         height: var(--esc-tdbu-clip-height);
+        transition: var(--esc-motion-transition-geometry, none);
         overflow: hidden;
       }
       .${ESC_CLASS_SELECTOR_SLIDE_TDBU_CLIP} .${ESC_CLASS_SELECTOR_SLIDE} {
@@ -812,10 +820,12 @@ export const SHUTTER_CSS =`
       }
       .${ESC_CLASS_SELECTOR_SLIDE_TDBU_RAIL_TOP} {
         top: var(--esc-tdbu-clip-top);
+        transition: var(--esc-motion-transition-geometry, none);
         transform: scaleY(-1); /* edge image reads as a top rail */
       }
       .${ESC_CLASS_SELECTOR_SLIDE_TDBU_RAIL_BOTTOM} {
         top: var(--esc-tdbu-rail-bottom-top);
+        transition: var(--esc-motion-transition-geometry, none);
       }
       .${ESC_CLASS_SELECTOR_SLIDE_TDBU_HANDLE} {
         position: absolute;
@@ -841,6 +851,7 @@ export const SHUTTER_CSS =`
         cursor: pointer;
         transform-origin: center;
         transform: var(--esc-transform-picker-tdbu);
+        transition: var(--esc-motion-transition-transform, none);
         touch-action: none;
         user-select: none;
       }

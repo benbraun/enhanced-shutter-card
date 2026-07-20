@@ -20,6 +20,17 @@ export class htmlShutter{
     const shutterSlatImage=this.escImages.getShutterSlatImageSrc(this.cfg.id());
     const shutterBottomImage=this.escImages.getShutterBottomImageSrc(this.cfg.id());
 
+    // Glide between position updates while the cover reports motion, but
+    // never while the user drags: direct manipulation must track the
+    // pointer without transition lag.
+    const inMotion =
+      (stateForOverlay == C.SHUTTER_STATE_OPENING || stateForOverlay == C.SHUTTER_STATE_CLOSING)
+      && !String(this.enhancedShutter.action ?? '').startsWith('user-drag');
+    const motionTransitionTransform = inMotion ? `transform ${C.MOTION_TRANSITION}` : C.NONE;
+    const motionTransitionGeometry = inMotion
+      ? `top ${C.MOTION_TRANSITION}, height ${C.MOTION_TRANSITION}`
+      : C.NONE;
+
     return `
       --mdc-icon-button-size: ${this.cfg.iconButtonSize()}${C.UNITY};
       --ha-icon-button-size: ${this.cfg.iconButtonSize()}${C.UNITY};
@@ -42,6 +53,8 @@ export class htmlShutter{
       --esc-window-rotate: ${this.cfg.viewImageRotate()};
       --esc-button-rotate: ${this.cfg.buttonRotate()};
 
+      --esc-motion-transition-transform: ${motionTransitionTransform};
+      --esc-motion-transition-geometry: ${motionTransitionGeometry};
       --esc-transform-slide:  ${this.enhancedShutter.transformSlide(this.actualScreenPosition)};
       --esc-transform-picker: ${this.enhancedShutter.transformPicker(this.actualScreenPosition)};
       --esc-transform-picker-tdbu: ${this.enhancedShutter.transformPicker(this.enhancedShutter.topRailPx)};

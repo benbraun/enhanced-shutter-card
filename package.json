@@ -4,7 +4,8 @@
     "clean": "rimraf dist",
     "build": "npm run clean && npx rollup -c",
     "watch": "rollup -c --watch",
-    "test:tdbu": "node test/tdbuSmoke.mjs"
+    "test:tdbu": "node test/tdbuSmoke.mjs",
+    "test:transition": "node test/transitionSmoke.mjs"
   },
   "devDependencies": {
     "@rollup/plugin-node-resolve": "^16.0.1",
