@@ -191,6 +191,7 @@ The settings are defined in the follwing logic:
 | tdbu_entity                  | string        | No       | `null`                                        | Yes    | Yes   | EntityId of the cover representing the top rail (bottom-up shade) of a Top-Down Bottom-Up blind. The main `entity` drives the bottom rail. See [Top-Down Bottom-Up (TDBU) blinds](#top-down-bottom-up-tdbu-blinds).                                                        |            |
 | tdbu_invert_percentage       | boolean       | No       | `false`                                       | Yes    | Yes   | Invert the position reading (and commands) of the `tdbu_entity`.                                                                                                                                                                                                           |            |
 | show_tdbu_slider             | boolean       | No       | `false`                                       | Yes    | Yes   | Show an extra slider that controls the TDBU top rail (only with `tdbu_entity`).                                                                                                                                                                                            |            |
+| show_tdbu_buttons            | boolean       | No       | `true`                                        | Yes    | Yes   | Show a second up/stop/down button column controlling the TDBU top (middle) rail, on the opposite side of the window from the main buttons (only with `tdbu_entity` and `show_standard_buttons`).                                                                             |            |
 | show_group_members           | boolean       | No       | `false`                                       | Yes    | Yes   | When using a grouped-cover in the Card, set to 'true'to display the member covers in stead of the group-cover.                                                                                                                                                             |            |
 | passive_mode                 | boolean       | no       | `false`                                       | Yes    | Yes   | Interface works normal, but no action is sent to the shutters. A lock-icon is shown after the shutter-name.                                                                                                                                                                |            |
 | image_map                    | string        | No       | /local/community/enhanced-shutter-card        | Yes    | Yes   | map of the images. Change thsi when using own images.                                                                                                                                                                                                                      |            |
@@ -258,8 +259,12 @@ fabric to the gap between them.
   everything above the bottom rail), `100` = top rail fully down (retracted).
   Use `tdbu_invert_percentage: true` if your integration reports the opposite.
 - Both rails can be dragged directly on the window; the drag snaps to the
-  nearest rail, and the rails can touch but never cross.
-- `show_tdbu_slider: true` adds a dedicated slider for the top rail.
+  nearest rail, and the rails can touch but never cross. When the rails overlap
+  (fully open/closed) the drag direction decides which rail moves.
+- Two up/stop/down button columns flank the shade — the main buttons drive the
+  bottom rail, and a second column (`show_tdbu_buttons`, on by default) drives
+  the top rail — mirroring the Hunter Douglas PowerView remote's two directional
+  sets. `show_tdbu_slider: true` adds a dedicated slider for the top rail.
 - TDBU requires `closing_direction: down` (the default); other directions show
   a warning and render as a normal shutter.
 

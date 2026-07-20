@@ -277,6 +277,35 @@ call = serviceCalls.find((c) => c.service === 'set_cover_position');
 check('fully-open + drag up grabs the top rail (tdbu)',
   !!call && call.data.entity_id === 'cover.top_rail', JSON.stringify(serviceCalls));
 
+// ---- 5c. top-rail buttons (default on) -----------------------------------
+card.hass = makeHass(30, 30);
+await card.updateComplete; await settle(); await tdbuShutter.updateComplete;
+const railBtn = (label) => sr?.querySelector(`ha-icon-button[label="${label}"]`);
+check('TDBU top-rail button column renders (up/stop/down)',
+  !!railBtn('Top rail up') && !!railBtn('Top rail stop') && !!railBtn('Top rail down'));
+check('plain shutter has no top-rail buttons',
+  !srPlain?.querySelector('ha-icon-button[label="Top rail up"]'));
+
+serviceCalls.length = 0;
+railBtn('Top rail up')?.dispatchEvent(new window.Event('click', { bubbles: true }));
+call = serviceCalls.at(-1);
+check('Top rail up sends set_cover_position 0 to tdbu entity',
+  !!call && call.service === 'set_cover_position' && call.data.entity_id === 'cover.top_rail' && call.data.position === 0,
+  JSON.stringify(call));
+
+serviceCalls.length = 0;
+railBtn('Top rail down')?.dispatchEvent(new window.Event('click', { bubbles: true }));
+call = serviceCalls.at(-1);
+check('Top rail down sends set_cover_position to tdbu entity, capped at bottom rail (<=70)',
+  !!call && call.service === 'set_cover_position' && call.data.entity_id === 'cover.top_rail' &&
+  call.data.position > 0 && call.data.position <= 70, JSON.stringify(call));
+
+serviceCalls.length = 0;
+railBtn('Top rail stop')?.dispatchEvent(new window.Event('click', { bubbles: true }));
+call = serviceCalls.at(-1);
+check('Top rail stop sends stop_cover to tdbu entity',
+  !!call && call.service === 'stop_cover' && call.data.entity_id === 'cover.top_rail', JSON.stringify(call));
+
 // ---- 6. hass update re-renders geometry ---------------------------------
 card.hass = makeHass(30, 30); // establish a fresh baseline after the overlap tests
 await card.updateComplete; await settle(); await tdbuShutter.updateComplete;

@@ -271,6 +271,7 @@ export const CONFIG_SIGNAL_ENTITY_ID = 'signal_entity';
 export const CONFIG_TDBU_ENTITY_ID = 'tdbu_entity';  // Top-Down Bottom-Up: entity for the bottom-up shade
 export const CONFIG_TDBU_INVERT_PCT = 'tdbu_invert_percentage'; // invert position reading for the bottom-up shade entity
 export const CONFIG_SHOW_TDBU_SLIDER = 'show_tdbu_slider'; // optional slider for the TDBU top rail
+export const CONFIG_SHOW_TDBU_BUTTONS = 'show_tdbu_buttons'; // up/stop/down button column for the TDBU top rail
 
 export const CONFIG_SHOW_GROUP_MEMBERS = 'show_group_members';
 
@@ -369,6 +370,7 @@ export const ESC_SIGNAL_ENTITY_ID = null;
 export const ESC_TDBU_ENTITY_ID = null;
 export const ESC_TDBU_INVERT_PCT = false;
 export const ESC_SHOW_TDBU_SLIDER = false;
+export const ESC_SHOW_TDBU_BUTTONS = true;
 
 export const ESC_SHOW_GROUP_MEMBERS = false;
 
@@ -493,6 +495,7 @@ export const CONFIG_DEFAULT ={
   [CONFIG_TDBU_ENTITY_ID]: ESC_TDBU_ENTITY_ID,
   [CONFIG_TDBU_INVERT_PCT]: ESC_TDBU_INVERT_PCT,
   [CONFIG_SHOW_TDBU_SLIDER]: ESC_SHOW_TDBU_SLIDER,
+  [CONFIG_SHOW_TDBU_BUTTONS]: ESC_SHOW_TDBU_BUTTONS,
 
   [CONFIG_NAME]: ESC_NAME,
   [CONFIG_PASSIVE_MODE]: ESC_PASSIVE_MODE,

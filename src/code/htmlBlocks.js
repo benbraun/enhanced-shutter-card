@@ -392,6 +392,7 @@ export class htmlBlockMiddle extends htmlBlock{
     const centralWindowBlock = new htmlBlockCentralWindow(this.shutter);
     const tiltSectionBlock = new htmlBlockTiltSection(this.shutter);
     const rightButtonsBlock = new htmlBlockRightButtons(this.shutter);
+    const topRailButtonsBlock = new htmlBlockTopRailButtons(this.shutter);
 
     this.setHtmlString(html`
       <div class="${C.ESC_CLASS_MIDDLE}">
@@ -406,6 +407,7 @@ export class htmlBlockMiddle extends htmlBlock{
           `
           : html`` //`<div class='blankDiv'></div>`
         }
+        ${topRailButtonsBlock.show()}
       </div>
     `);
   }
@@ -416,6 +418,7 @@ export class htmlBlockMiddle extends htmlBlock{
     const centralWindowBlock = new htmlBlockCentralWindow(this.shutter);
     const tiltSectionBlock = new htmlBlockTiltSection(this.shutter);
     const rightButtonsBlock = new htmlBlockRightButtons(this.shutter);
+    const topRailButtonsBlock = new htmlBlockTopRailButtons(this.shutter);
 
     let xyLeftButtons = leftButtonsBlock.size();
     let xyOpenCloseSlider = this.cfg.showOpenCloseSliderBlock() && this.featurePosition ? openCloseSliderBlock.size() : new xyPair();
@@ -423,6 +426,7 @@ export class htmlBlockMiddle extends htmlBlock{
     let xyCentralWindow = centralWindowBlock.size();
     let xyTiltSection = this.cfg.canTilt() ? tiltSectionBlock.size(): new xyPair();
     let xyRightButtons = this.cfg.showPartialOpenButtons() ? rightButtonsBlock.size() : new xyPair();
+    let xyTopRailButtons = topRailButtonsBlock.size();
 
     let xyRight = this.gridAddBoth(xyTiltSection,xyRightButtons);
     let xy;
@@ -431,11 +435,13 @@ export class htmlBlockMiddle extends htmlBlock{
       xy = this.gridAddHorizontal(xy,xyTdbuSlider);
       xy = this.gridAddHorizontal(xy,xyCentralWindow);
       xy = this.gridAddHorizontal(xy,xyRight);
+      xy = this.gridAddHorizontal(xy,xyTopRailButtons);
     }else{
       xy = this.gridAddVertical(xyLeftButtons,xyOpenCloseSlider);
       xy = this.gridAddVertical(xy,xyTdbuSlider);
       xy = this.gridAddVertical(xy,xyCentralWindow);
       xy = this.gridAddVertical(xy,xyRight);
+      xy = this.gridAddVertical(xy,xyTopRailButtons);
 
     }
     this.setXySize(xy);
@@ -578,6 +584,41 @@ export class htmlBlockButtonPartial extends htmlBlockLeftButtons{
   }
   defineSize(){
     let xy =  this.cfg.showStandardButtons()? this.sizeButton() : new xyPair(0,0) ;
+    this.setXySize(xy);
+  }
+}
+export class htmlBlockTopRailButtons extends htmlBlock{
+  // TDBU: up/stop/down column controlling the top (middle) rail (tdbu_entity),
+  // mirroring the Hunter Douglas remote's second directional set. Placed on the
+  // opposite side of the window from the main (bottom-rail) buttons.
+  active(){
+    return this.cfg.hasTdbu() && this.cfg.showTdbuButtons() && this.cfg.showStandardButtons();
+  }
+  button(command, icon, label){
+    return html`
+      <ha-icon-button
+        label="${label}"
+        .disabled=${this.cfg.disabledGlobaly() || this.cfg.passiveMode()}
+        @click=${()=> this.shutter.doTdbuOnclick(command)} >
+        <ha-icon class="${C.ESC_CLASS_HA_ICON}" icon="${icon}"></ha-icon>
+      </ha-icon-button>
+    `;
+  }
+  defineHtml(){
+    this.setHtmlString(this.active()
+      ? html`
+        <div class="${C.ESC_CLASS_BUTTONS}">
+          ${this.button(C.UP, 'mdi:arrow-up', 'Top rail up')}
+          ${this.button(C.ACTION_SHUTTER_STOP, 'mdi:stop', 'Top rail stop')}
+          ${this.button(C.DOWN, 'mdi:arrow-down', 'Top rail down')}
+        </div>`
+      : html``);
+  }
+  defineSize(){
+    if (!this.active()){ this.setXySize(new xyPair()); return; }
+    let xy = this.gridAddVertical(this.sizeButton(), this.sizeButton());
+    xy = this.gridAddVertical(xy, this.sizeButton());
+    if (!this.cfg.buttonGroupInRow()) xy.switch();
     this.setXySize(xy);
   }
 }

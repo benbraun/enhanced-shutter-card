@@ -1313,6 +1313,20 @@ export class EnhancedShutter extends LitElement
     //console.log('=> doOnclick: command:',command,'position:',position,'entityId:',entityId);
     this.callHassCoverService(entityId,command,services[command].args);
   }
+  doTdbuOnclick(command) {
+    // TDBU top-rail buttons. Up/down go through the same position path as the
+    // drag/slider so tdbu_invert_percentage and the no-cross clamp apply; down
+    // is capped at the bottom rail inside sendTdbuShutterPosition.
+    this.action='user-pick-on-click';
+    const entityId = this.cfg.tdbuEntityId();
+    if (command === C.ACTION_SHUTTER_STOP){
+      this.callHassCoverService(entityId, C.ACTION_SHUTTER_STOP);
+    } else if (command === C.UP){
+      this.sendTdbuShutterPosition(entityId, C.SHUTTER_CLOSED_PCT); // rail to the top
+    } else if (command === C.DOWN){
+      this.sendTdbuShutterPosition(entityId, C.SHUTTER_OPEN_PCT);   // rail down (capped at bottom rail)
+    }
+  }
   getBasePickPoint(event){
     /* get picked point */
     this.basePickPoint = this.getPoint(event);
@@ -1719,6 +1733,7 @@ export class shutterCfg {
     this.tdbuEntityId(escConfig[C.CONFIG_TDBU_ENTITY_ID]);
     this.tdbuInvertPercentage(!!escConfig[C.CONFIG_TDBU_INVERT_PCT]);
     this.showTdbuSliderBlock(!!escConfig[C.CONFIG_SHOW_TDBU_SLIDER]);
+    this.showTdbuButtons(!!escConfig[C.CONFIG_SHOW_TDBU_BUTTONS]);
     this.setTdbuEntity(hass,this.tdbuEntityId());
     this.debug(!!escConfig[C.CONFIG_DEBUG]);
 
@@ -2006,6 +2021,9 @@ export class shutterCfg {
   }
   showTdbuSliderBlock(value = null){
     return this.#getCfg(C.CONFIG_SHOW_TDBU_SLIDER,value);
+  }
+  showTdbuButtons(value = null){
+    return this.#getCfg(C.CONFIG_SHOW_TDBU_BUTTONS,value);
   }
 
   getImage(imageType){
