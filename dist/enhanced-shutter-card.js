@@ -329,6 +329,11 @@ const SHUTTER_STATE_OPENING = 'opening';
 const SHUTTER_STATE_CLOSING = 'closing';
 const SHUTTER_STATE_PARTIAL_OPEN = 'partial_open'; // speudo state
 
+// Duration/easing used to glide the shutter graphic between position updates
+// while the cover is opening/closing. Slightly longer than the typical update
+// interval so successive updates retarget a still-running transition smoothly.
+const MOTION_TRANSITION = '0.3s linear';
+
 
 const SHUTTER_STATES = [
   SHUTTER_STATE_OPEN,
@@ -926,6 +931,7 @@ const SHUTTER_CSS =`
         cursor: pointer;
         transform-origin: center;
         transform: var(--esc-transform-picker);
+        transition: var(--esc-motion-transition-transform, none);
         touch-action: none;
         user-select: none;
       }
@@ -939,6 +945,7 @@ const SHUTTER_CSS =`
         bottom: 100%;
         transform-origin: bottom;
         transform: var(--esc-transform-slide);
+        transition: var(--esc-motion-transition-transform, none);
         image-rendering: auto;
         image-rendering: pixelated;
         image-rendering: crisp-edges;
@@ -1004,6 +1011,7 @@ const SHUTTER_CSS =`
         width: 100%;
         top: var(--esc-tdbu-clip-top);
         height: var(--esc-tdbu-clip-height);
+        transition: var(--esc-motion-transition-geometry, none);
         overflow: hidden;
       }
       .${ESC_CLASS_SELECTOR_SLIDE_TDBU_CLIP} .${ESC_CLASS_SELECTOR_SLIDE} {
@@ -1026,10 +1034,12 @@ const SHUTTER_CSS =`
       }
       .${ESC_CLASS_SELECTOR_SLIDE_TDBU_RAIL_TOP} {
         top: var(--esc-tdbu-clip-top);
+        transition: var(--esc-motion-transition-geometry, none);
         transform: scaleY(-1); /* edge image reads as a top rail */
       }
       .${ESC_CLASS_SELECTOR_SLIDE_TDBU_RAIL_BOTTOM} {
         top: var(--esc-tdbu-rail-bottom-top);
+        transition: var(--esc-motion-transition-geometry, none);
       }
       .${ESC_CLASS_SELECTOR_SLIDE_TDBU_HANDLE} {
         position: absolute;
@@ -1055,6 +1065,7 @@ const SHUTTER_CSS =`
         cursor: pointer;
         transform-origin: center;
         transform: var(--esc-transform-picker-tdbu);
+        transition: var(--esc-motion-transition-transform, none);
         touch-action: none;
         user-select: none;
       }
@@ -1248,6 +1259,17 @@ class htmlShutter{
     const shutterSlatImage=this.escImages.getShutterSlatImageSrc(this.cfg.id());
     const shutterBottomImage=this.escImages.getShutterBottomImageSrc(this.cfg.id());
 
+    // Glide between position updates while the cover reports motion, but
+    // never while the user drags: direct manipulation must track the
+    // pointer without transition lag.
+    const inMotion =
+      (stateForOverlay == SHUTTER_STATE_OPENING || stateForOverlay == SHUTTER_STATE_CLOSING)
+      && !String(this.enhancedShutter.action ?? '').startsWith('user-drag');
+    const motionTransitionTransform = inMotion ? `transform ${MOTION_TRANSITION}` : NONE;
+    const motionTransitionGeometry = inMotion
+      ? `top ${MOTION_TRANSITION}, height ${MOTION_TRANSITION}`
+      : NONE;
+
     return `
       --mdc-icon-button-size: ${this.cfg.iconButtonSize()}${UNITY};
       --ha-icon-button-size: ${this.cfg.iconButtonSize()}${UNITY};
@@ -1270,6 +1292,8 @@ class htmlShutter{
       --esc-window-rotate: ${this.cfg.viewImageRotate()};
       --esc-button-rotate: ${this.cfg.buttonRotate()};
 
+      --esc-motion-transition-transform: ${motionTransitionTransform};
+      --esc-motion-transition-geometry: ${motionTransitionGeometry};
       --esc-transform-slide:  ${this.enhancedShutter.transformSlide(this.actualScreenPosition)};
       --esc-transform-picker: ${this.enhancedShutter.transformPicker(this.actualScreenPosition)};
       --esc-transform-picker-tdbu: ${this.enhancedShutter.transformPicker(this.enhancedShutter.topRailPx)};
