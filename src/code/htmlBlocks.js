@@ -804,7 +804,7 @@ export class htmlBlockCentralWindow extends htmlBlock{
       // The clip container only clips the slat fabric to the gap between the rails.
       return html`
         <div class="${C.ESC_CLASS_SELECTOR_SLIDE_EDGE} ${C.ESC_CLASS_SELECTOR_SLIDE_TDBU_RAIL_TOP}">
-          <div class="${C.ESC_CLASS_SELECTOR_SLIDE_TDBU_HANDLE}"></div>
+          <div class="${C.ESC_CLASS_SELECTOR_SLIDE_HANDLE}"></div>
         </div>
         <div class="${C.ESC_CLASS_SELECTOR_SLIDE_TDBU_CLIP}">
           <div class="${C.ESC_CLASS_SELECTOR_SLIDE}">
@@ -812,14 +812,16 @@ export class htmlBlockCentralWindow extends htmlBlock{
           </div>
         </div>
         <div class="${C.ESC_CLASS_SELECTOR_SLIDE_EDGE} ${C.ESC_CLASS_SELECTOR_SLIDE_TDBU_RAIL_BOTTOM}">
-          <div class="${C.ESC_CLASS_SELECTOR_SLIDE_TDBU_HANDLE}"></div>
+          <div class="${C.ESC_CLASS_SELECTOR_SLIDE_HANDLE}"></div>
         </div>
       `;
     }
     return html`
         <div class="${C.ESC_CLASS_SELECTOR_SLIDE}">
           ${this.showSlideSlats(this.shutter)}
-          <div class="${C.ESC_CLASS_SELECTOR_SLIDE_EDGE}"></div>
+          <div class="${C.ESC_CLASS_SELECTOR_SLIDE_EDGE}">
+            <div class="${C.ESC_CLASS_SELECTOR_SLIDE_HANDLE}"></div>
+          </div>
         </div>
       `;
   }

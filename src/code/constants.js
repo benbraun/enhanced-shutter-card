@@ -50,7 +50,7 @@ export const ESC_CLASS_SELECTOR_SLIDE_TDBU = `${ESC_CLASS_SELECTOR_SLIDE}-tdbu`;
 export const ESC_CLASS_SELECTOR_SLIDE_TDBU_CLIP = `${ESC_CLASS_SELECTOR_SLIDE_TDBU}-clip`;
 export const ESC_CLASS_SELECTOR_SLIDE_TDBU_RAIL_TOP = `${ESC_CLASS_SELECTOR_SLIDE_TDBU}-rail-top`;
 export const ESC_CLASS_SELECTOR_SLIDE_TDBU_RAIL_BOTTOM = `${ESC_CLASS_SELECTOR_SLIDE_TDBU}-rail-bottom`;
-export const ESC_CLASS_SELECTOR_SLIDE_TDBU_HANDLE = `${ESC_CLASS_SELECTOR_SLIDE_TDBU}-handle`;
+export const ESC_CLASS_SELECTOR_SLIDE_HANDLE = `${ESC_CLASS_SELECTOR_SLIDE}-handle`;
 export const ESC_CLASS_SELECTOR_PICKER_TDBU = `${ESC_CLASS_SELECTOR_PICKER}-tdbu`;
 
 export const ESC_CLASS_MOVEMENT_OVERLAY = `${ESC_CLASS_BASE_NAME}-movement-overlay`; // esc-shutter-movement-overlay
@@ -784,6 +784,7 @@ export const SHUTTER_CSS =`
         background-image: var(--esc-slide-background-main-image);
       }
       .${ESC_CLASS_SELECTOR_SLIDE_EDGE} {
+        position: relative; /* containing block for the grab handle */
         height: var(--esc-slide-edge-height);
         background-position: var(--esc-slide-background-edge-position);
         background-image: var(--esc-slide-background-edge-image);
@@ -827,7 +828,7 @@ export const SHUTTER_CSS =`
         top: var(--esc-tdbu-rail-bottom-top);
         transition: var(--esc-motion-transition-geometry, none);
       }
-      .${ESC_CLASS_SELECTOR_SLIDE_TDBU_HANDLE} {
+      .${ESC_CLASS_SELECTOR_SLIDE_HANDLE} {
         position: absolute;
         left: 50%;
         top: 50%;

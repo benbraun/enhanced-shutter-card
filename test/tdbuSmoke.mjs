@@ -118,7 +118,7 @@ check('TDBU top rail renders', !!railTop);
 check('TDBU bottom rail renders', !!railBottom);
 check('TDBU clip container renders with slide inside', !!clip && !!slideInClip);
 check('grab handles render on both rails',
-  sr?.querySelectorAll('.esc-shutter-selector-slide-tdbu-handle').length === 2);
+  sr?.querySelectorAll('.esc-shutter-selector-slide-handle').length === 2);
 check('TDBU slider renders (show_tdbu_slider)',
   !!sr?.querySelector('.esc-shutter-tilt-slider-class.tdbu'));
 
@@ -141,6 +141,8 @@ check('position text contains Top: 30%', positionText.includes('Top: 30'), `text
 const srPlain = plainShutter?.shadowRoot;
 check('plain shutter has classic slide edge inside slide',
   !!srPlain?.querySelector('.esc-shutter-selector-slide > .esc-shutter-selector-slide-edge'));
+check('plain shutter has one grab handle on its bottom rail',
+  srPlain?.querySelectorAll('.esc-shutter-selector-slide-edge .esc-shutter-selector-slide-handle').length === 1);
 check('plain shutter has no TDBU nodes',
   !srPlain?.querySelector('.esc-shutter-selector-slide-tdbu-clip') &&
   !srPlain?.querySelector('.esc-shutter-selector-picker-tdbu'));
