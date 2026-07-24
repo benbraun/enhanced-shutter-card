@@ -2,7 +2,8 @@
   "type": "module",
   "scripts": {
     "clean": "rimraf dist",
-    "build": "npm run clean && npx rollup -c",
+    "build": "npm run clean && npx rollup -c && npm run gzip",
+    "gzip": "node scripts/gzip.mjs",
     "watch": "rollup -c --watch",
     "test:tdbu": "node test/tdbuSmoke.mjs",
     "test:transition": "node test/transitionSmoke.mjs",
