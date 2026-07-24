@@ -359,9 +359,13 @@ export const ICONCOLORS = {
 export const Z_INDEX_PARTIAL = 5;
 export const Z_INDEX_PICKER  = 3;
 export const Z_INDEX_PICTURE = 1;
-export const Z_INDEX_MOVEMENT_ICON = 2;  // !important ??
+export const Z_INDEX_MOVEMENT_ICON = 2;
+// The movement overlay must paint ABOVE the shutter graphic (slats, TDBU
+// clip/rails at z-index 0/1) and the window frame image, otherwise the
+// direction arrow is occluded/clipped by the blind. It is made
+// pointer-events:none so it never blocks the picker/grab handle underneath.
 export const Z_INDEX_SLIDE  = -1;
-export const Z_INDEX_OVERLAY =-1;
+export const Z_INDEX_OVERLAY = 6;
 
 export const ESC_ENTITY_ID = null;
 
@@ -886,6 +890,7 @@ export const SHUTTER_CSS =`
         text-align: center;
         --mdc-icon-size: 60px;
         transform-origin: center center;
+        pointer-events: none; /* purely a visual indicator; never block the picker/handle */
       }
       .${ESC_CLASS_MOVEMENT_UP},
       .${ESC_CLASS_MOVEMENT_DOWN} {
