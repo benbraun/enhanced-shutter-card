@@ -80,5 +80,42 @@ check('movement-overlay z-index is the raised value', overlayRule.includes(`z-in
 const overlayEl = sr?.querySelector('.esc-shutter-movement-overlay');
 check('movement overlay element renders', !!overlayEl);
 
+// 4. TDBU top rail: the arrow must point the way the top rail visually moves.
+//    Moving the top rail DOWN drives the tdbu entity toward "open" (state
+//    "opening"), and both rail entities can report motion at once -- so the
+//    overlay must follow the top rail (down), not the bottom-rail state (up).
+function makeTdbuHass(mainState, topState) {
+  return {
+    states: {
+      'cover.main': { entity_id: 'cover.main', state: mainState, attributes: { current_position: 60, friendly_name: 'Main', supported_features: 15 } },
+      'cover.top': { entity_id: 'cover.top', state: topState, attributes: { current_position: 40, friendly_name: 'Top', supported_features: 15 } },
+    },
+    services: { cover: { open_cover: {}, close_cover: {}, set_cover_position: {}, stop_cover: {} } },
+    callService: () => {}, localize: () => '', language: 'en', callWS: async () => [],
+  };
+}
+async function tdbuArrow(mainState, topState) {
+  const c = document.createElement('enhanced-shutter-card');
+  c.setConfig({ entities: [{ entity: 'cover.main', tdbu_entity: 'cover.top' }] });
+  document.body.appendChild(c);
+  c.hass = makeTdbuHass('open', 'open');           // idle first
+  await settle(); await c.updateComplete; await settle();
+  c.hass = makeTdbuHass(mainState, topState);       // then moving
+  await c.updateComplete; await settle();
+  const s = c.shadowRoot?.querySelector('enhanced-shutter');
+  await s?.updateComplete;
+  const style = s?.shadowRoot?.querySelector('[data-shutter="cover.main"]')?.getAttribute('style') ?? '';
+  const grab = (n) => (style.match(new RegExp(n + ':\\s*([^;]+)')) || [])[1]?.trim();
+  const res = { up: grab('--esc-movement-overlay-up-display'), down: grab('--esc-movement-overlay-down-display') };
+  c.remove();
+  return res;
+}
+// Top rail moving DOWN (tdbu opening) while the bottom rail also reports motion.
+const down = await tdbuArrow('opening', 'opening');
+check('TDBU top rail moving down shows the DOWN arrow', down.down === 'block' && down.up !== 'block', JSON.stringify(down));
+// Top rail moving UP (tdbu closing).
+const up = await tdbuArrow('closing', 'closing');
+check('TDBU top rail moving up shows the UP arrow', up.up === 'block' && up.down !== 'block', JSON.stringify(up));
+
 console.log(failures ? `\n${failures} check(s) FAILED` : '\nAll checks passed');
 process.exit(failures ? 1 : 0);

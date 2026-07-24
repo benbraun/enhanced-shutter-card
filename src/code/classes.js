@@ -1035,12 +1035,16 @@ export class EnhancedShutter extends LitElement
       this.cfg.transformTranslate(0,-size_local.y()/2+position),  // Move to correct position
     ].join(C.SPACE);
   }
-  transformMovement(){
+  transformMovement(atTopRail=false){
     const size_x = this.actualGlobalWidthPx();
     const size_y = this.actualGlobalHeightPx();
     const size_global = new xyPair(size_x,size_y);
     const size_local=this.cfg.switchAxis(size_global);
-    const position = this.offsetOpenedPx()+this.coverSizeMovingDirectionPx()/2.0;
+    // Place the arrow on the moving rail: the TDBU top rail when it is the one
+    // moving, otherwise the middle of the (bottom-rail) cover.
+    const position = atTopRail
+      ? this.defScreenPositionFromTdbuPosition()
+      : this.offsetOpenedPx()+this.coverSizeMovingDirectionPx()/2.0;
     return [
       'translate(-50%, -50%)',
       this.cfg.transformTranslate(size_global.x()/2,size_global.y()/2), // to mid-point
@@ -1873,6 +1877,19 @@ export class shutterCfg {
   tdbuIsMoving(){
     const state = this.getTdbuEntity()?.getState();
     return state === C.SHUTTER_STATE_OPENING || state === C.SHUTTER_STATE_CLOSING;
+  }
+  tdbuOverlayDisplayState(){
+    // On-screen (display) motion of the TDBU top rail, used to point the
+    // movement arrow. The top rail's "open" position is at the BOTTOM of the
+    // window (top edge travels down), so on screen opening = moving down and
+    // closing = moving up -- the opposite of the bottom rail. tdbu_invert_
+    // percentage flips the reported device state relative to this display
+    // direction, so undo it here.
+    let state = this.getTdbuEntity()?.getState();
+    if (this.tdbuInvertPercentage() && C.INVERT_OPEN_CLOSE_SETTING[state] !== undefined){
+      state = C.INVERT_OPEN_CLOSE_SETTING[state];
+    }
+    return state;
   }
   currentTdbuDevicePosition(){
     let position = this.#tdbuEntity?.getCurrentPosition() ?? 0;

@@ -13,18 +13,36 @@ export class htmlShutter{
   }
 
   defStyleVarsShutter(){
-    let stateForOverlay = this.cfg.getCoverEntity().getState() || C.UNAVAILABLE;
+    const mainState = this.cfg.getCoverEntity().getState() || C.UNAVAILABLE;
     const viewImage=this.escImages.getViewImageSrc(this.cfg.id());
 
     // solves #103 see other lines with shutterSlatImage
     const shutterSlatImage=this.escImages.getShutterSlatImageSrc(this.cfg.id());
     const shutterBottomImage=this.escImages.getShutterBottomImageSrc(this.cfg.id());
 
-    // Glide between position updates while the cover reports motion, but
-    // never while the user drags: direct manipulation must track the
-    // pointer without transition lag.
+    // Movement overlay: point the arrow along whichever rail is actually
+    // moving. The TDBU top rail takes precedence -- that is the rail the user
+    // is driving, and both rail entities can report motion at the same time.
+    // The top rail's on-screen "open" direction is DOWN (opposite the bottom
+    // rail), so opening -> down arrow, closing -> up arrow.
+    const tdbuMoving = this.cfg.hasTdbu() && this.cfg.tdbuIsMoving();
+    let overlayMoving, overlayUp, overlayDown;
+    if (tdbuMoving){
+      const tdbuState = this.cfg.tdbuOverlayDisplayState();
+      overlayMoving = true;
+      overlayUp = tdbuState == C.SHUTTER_STATE_CLOSING;
+      overlayDown = tdbuState == C.SHUTTER_STATE_OPENING;
+    } else {
+      overlayMoving = mainState == C.SHUTTER_STATE_OPENING || mainState == C.SHUTTER_STATE_CLOSING;
+      overlayUp = mainState == this.cfg.applyInvertForOverlayDisplay(C.SHUTTER_STATE_OPENING);
+      overlayDown = mainState == this.cfg.applyInvertForOverlayDisplay(C.SHUTTER_STATE_CLOSING);
+    }
+
+    // Glide between position updates while a rail reports motion, but never
+    // while the user drags: direct manipulation must track the pointer without
+    // transition lag.
     const inMotion =
-      (stateForOverlay == C.SHUTTER_STATE_OPENING || stateForOverlay == C.SHUTTER_STATE_CLOSING)
+      overlayMoving
       && !String(this.enhancedShutter.action ?? '').startsWith('user-drag');
     const motionTransitionTransform = inMotion ? `transform ${C.MOTION_TRANSITION}` : C.NONE;
     const motionTransitionGeometry = inMotion
@@ -66,7 +84,7 @@ export class htmlShutter{
 
       --esc-transform-undo-slats-rotate:  ${this.enhancedShutter.transformUndoSlatsRotate()};
       --esc-transform-tilt-slat-rotate:  ${this.enhancedShutter.transformTiltSlatRotate()};
-      --esc-transform-movement: ${this.enhancedShutter.transformMovement()};
+      --esc-transform-movement: ${this.enhancedShutter.transformMovement(tdbuMoving)};
 
       --esc-picker-top: -${this.cfg.pickerOverlapPx()+C.UNITY};
       --esc-picker-height: ${this.cfg.pickerOverlapPx()*2+C.UNITY};
@@ -89,9 +107,9 @@ export class htmlShutter{
       --esc-buttons-flex-flow:      ${!this.cfg.buttonGroupInRow() ? 'row-reverse' : 'column'} nowrap;
       --esc-buttons-flex-flow-tilt: ${!this.cfg.buttonGroupInRow() ? 'row-reverse' : 'column'} nowrap;
 
-      --esc-movement-overlay-display: ${(stateForOverlay == C.SHUTTER_STATE_OPENING || stateForOverlay == C.SHUTTER_STATE_CLOSING) ? 'block' : C.NONE};
-      --esc-movement-overlay-up-display: ${stateForOverlay == this.cfg.applyInvertForOverlayDisplay(C.SHUTTER_STATE_OPENING) ? 'block' : C.NONE};
-      --esc-movement-overlay-down-display: ${stateForOverlay == this.cfg.applyInvertForOverlayDisplay(C.SHUTTER_STATE_CLOSING) ? 'block' : C.NONE};
+      --esc-movement-overlay-display: ${overlayMoving ? 'block' : C.NONE};
+      --esc-movement-overlay-up-display: ${overlayUp ? 'block' : C.NONE};
+      --esc-movement-overlay-down-display: ${overlayDown ? 'block' : C.NONE};
 
       --esc-slide-background-main-image: ${shutterSlatImage.includes('.') ?  `url(${shutterSlatImage})` : ''};
       --esc-slide-background-edge-image: ${shutterBottomImage.includes('.') ?  `url(${shutterBottomImage})` : ''};
