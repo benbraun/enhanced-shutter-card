@@ -2,8 +2,8 @@
 {
   "domain": "enhanced-shutter-card",
   "name": "Enhanced Shutter Card",
-  "codeowners": ["@marcelhoogantink"],
-  "documentation": "https://github.com/marcelhoogantink/enhanced-shutter-card/blob/main/README.md",
-  "issue_tracker": "https://github.com/marcelhoogantink/enhanced-shutter-card/issues",
-  "version": "1.6.0b1"
+  "codeowners": ["@benbraun"],
+  "documentation": "https://github.com/benbraun/enhanced-shutter-card/blob/main/README.md",
+  "issue_tracker": "https://github.com/benbraun/enhanced-shutter-card/issues",
+  "version": "1.6.1-tdbu.5"
 }

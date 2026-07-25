@@ -1,30 +1,50 @@
-# Enhanced Shutter Card
+# Enhanced Shutter Card (TDBU fork)
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg?style=for-the-badge)](https://github.com/custom-components/hacs) [![buymeacoffee_badge](https://img.shields.io/badge/Donate-Buymeacoffee-orange?style=for-the-badge)](https://buymeacoffee.com/marcelhoogantink)
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom_Repository-orange.svg?style=for-the-badge)](https://www.hacs.xyz/docs/faq/custom_repositories/)
+
+---
+
+> ### ⚠️ This is a modified fork
+>
+> This repository is a fork of [**marcelhoogantink/enhanced-shutter-card**](https://github.com/marcelhoogantink/enhanced-shutter-card),
+> the original and upstream project — all credit for the card belongs to its author.
+> This fork has been changed from upstream, primarily to add and improve
+> **TDBU (Top-Down Bottom-Up) blind** support:
+>
+> - Top-rail (middle rail) button controls, with a stop button shown only while a rail is moving
+> - A grab handle on both rails, fixed so neither becomes ungrabbable or hidden behind the window frame
+> - Correct movement-direction arrows, no longer clipped by the blind graphic
+> - Simplified TDBU geometry so rails may touch but never cross
+> - A gzip-compressed bundle for serving in Home Assistant
+>
+> **Bug reports for this fork belong [here](https://github.com/benbraun/enhanced-shutter-card/issues) — please do not
+> report fork-specific issues to the upstream project.** If you want the original,
+> unmodified card, install upstream instead; it is available directly in HACS.
+
 ---
 
 ## Installation:
 
-Use this button:
+This fork is **not** in the HACS default store, so add it as a
+[Custom Repository](https://www.hacs.xyz/docs/faq/custom_repositories/):
+enter repository-url `https://github.com/benbraun/enhanced-shutter-card.git`
+and choose type `Dashboard`.
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=marcelhoogantink&repository=enhanced-shutter-card&category=plugin)
-...and download the card, or use HACS, search for `Enhanced Shutter Card`.
+Or use this button:
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=benbraun&repository=enhanced-shutter-card&category=plugin)
+...and download the card.
 The resources will automatically be configured with the needed files.
 
 When this all is done, you can find the card in Home Assistant in `custom cards` under the `By Card` tab in the list of available cards when building a Dashboard:
 
 ![alt text](example.png)
 
-<small>*(When unfortunately both options above don't work, you need to add this repository as a Custom Repository.
-See for installing Custom Repositories this [hacs-custom-repositories](https://www.hacs.xyz/docs/faq/custom_repositories/) page.
-Enter repository-url: `https://github.com/marcelhoogantink/enhanced-shutter-card.git` and choose type: `Dashboard`.)</small>*
-
-
 When you're done, you can...
 
-Star <a href="https://github.com/marcelhoogantink/enhanced-shutter-card" target="_blank">  ⭐ <b>Enhanced Shutter Card</b> </a> on GitHub
+Star <a href="https://github.com/marcelhoogantink/enhanced-shutter-card" target="_blank">  ⭐ <b>Enhanced Shutter Card</b> </a> on GitHub — the upstream project this fork is based on...
 
- ... and ...
+ ... and support its author ...
 
 <a href="https://www.buymeacoffee.com/marcelhoogantink" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height= "60px" width=  "217px" ></a>
 
