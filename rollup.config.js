@@ -1,9 +1,13 @@
+import { readFileSync } from 'node:fs';
 import resolve from '@rollup/plugin-node-resolve';
 import copy from "rollup-plugin-copy";
 import terser from '@rollup/plugin-terser';
 import replace from '@rollup/plugin-replace';
 
-const ref = process.env.GITHUB_REF_NAME ?? 'dev';
+// Only a published release carries a real version; every other build (local or
+// branch CI) falls back to manifest.json so the banner never reads "main".
+const manifest = JSON.parse(readFileSync(new URL('./manifest.json', import.meta.url), 'utf8'));
+const ref = process.env.RELEASE_VERSION || manifest.version || 'dev';
 const isPreRelease = process.env.PRE_RELEASE === 'true';
 
 const plugins = [

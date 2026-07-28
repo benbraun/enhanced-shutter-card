@@ -5,6 +5,7 @@ on:
     types: [published]
   push:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -27,6 +28,7 @@ jobs:
       - name: Build
         run: npm run build
         env:
+          RELEASE_VERSION: ${{ github.event.release.tag_name }}
           PRE_RELEASE: ${{ github.event.release.prerelease }}
 
       - name: Copy image files to dist
@@ -41,13 +43,13 @@ jobs:
           head -5 dist/enhanced-shutter-card.js
 
       - name: Commit dist to repo
+        if: github.ref_type == 'branch'
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git checkout ${{ github.ref_name }}
           git add dist/
-          git commit -m "Build dist for release" || echo "Nothing to commit"
-          git push origin ${{ github.ref_name }}
+          git diff --staged --quiet || git commit -m "Build dist for ${{ github.ref_name }}"
+          git push origin HEAD:${{ github.ref_name }}
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v6.0.0
