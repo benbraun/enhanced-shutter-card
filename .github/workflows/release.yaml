@@ -42,6 +42,10 @@ jobs:
           echo "First 5 lines:"
           head -5 dist/enhanced-shutter-card.js
 
+      # The smoke tests import dist/, so they run against the built bundle.
+      - name: Run smoke tests
+        run: npm test
+
       - name: Upload build artifact
         uses: actions/upload-artifact@v6.0.0
         with:

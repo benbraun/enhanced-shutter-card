@@ -5,6 +5,7 @@
     "build": "npm run clean && npx rollup -c && npm run gzip",
     "gzip": "node scripts/gzip.mjs",
     "watch": "rollup -c --watch",
+    "test": "npm run test:tdbu && npm run test:transition && npm run test:movement",
     "test:tdbu": "node test/tdbuSmoke.mjs",
     "test:transition": "node test/transitionSmoke.mjs",
     "test:movement": "node test/movementSmoke.mjs"
