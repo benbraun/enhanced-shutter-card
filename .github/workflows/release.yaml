@@ -42,15 +42,6 @@ jobs:
           echo "First 5 lines:"
           head -5 dist/enhanced-shutter-card.js
 
-      - name: Commit dist to repo
-        if: github.ref_type == 'branch'
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add dist/
-          git diff --staged --quiet || git commit -m "Build dist for ${{ github.ref_name }}"
-          git push origin HEAD:${{ github.ref_name }}
-
       - name: Upload build artifact
         uses: actions/upload-artifact@v6.0.0
         with:
