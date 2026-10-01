@@ -108,6 +108,7 @@ export class htmlShutter{
       --esc-buttons-flex-flow-tilt: ${!this.cfg.buttonGroupInRow() ? 'row-reverse' : 'column'} nowrap;
 
       --esc-movement-overlay-display: ${overlayMoving ? 'block' : C.NONE};
+      --esc-movement-overlay-background: ${this.cfg.hasTdbu() ? 'transparent' : 'rgba(0,0,0,0.3)'};
       --esc-movement-overlay-up-display: ${overlayUp ? 'block' : C.NONE};
       --esc-movement-overlay-down-display: ${overlayDown ? 'block' : C.NONE};
 

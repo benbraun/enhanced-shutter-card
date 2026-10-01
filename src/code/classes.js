@@ -727,6 +727,7 @@ export class EnhancedShutter extends LitElement
     this.actualTdbuPosition=0; // TDBU: top rail percent, symmetric with actualShutterPosition
     this.positionText ='';
     this.action = '#';
+    this.isDragging = false;
 
     this[C.ESC_CLASS_SELECTOR]=null;
   }
@@ -772,7 +773,8 @@ export class EnhancedShutter extends LitElement
       console_log(`${this.cfg.friendlyName()}: Shutter Update, Property ${propName} changed. oldValue: ${oldValue}; new: ${this[propName]}`);
     });
     /**/
-    this.action='cover-update';
+    // Position reports from either rail must not end an active pointer drag.
+    if (!this.isDragging) this.action='cover-update';
   }
 
   render()
@@ -866,6 +868,13 @@ export class EnhancedShutter extends LitElement
   }
 
   manageEvents(action, mouseState, target, handler) {
+    if (mouseState === C.MOUSEMOVE) {
+      this.isDragging = action === C.ADD_EVENT;
+      if (!this.isDragging) {
+        this.action = 'user-pick';
+        this.requestUpdate();
+      }
+    }
 
     const EVENTS = {
       [C.MOUSEDOWN]: ['touchstart', 'mousedown', 'pointerdown'],
@@ -914,7 +923,7 @@ export class EnhancedShutter extends LitElement
     if (this.cfg.showOpenCloseSliderBlock()){
       if (this.openCloseSlider) this.openCloseSlider.value = this.react_ShutterPosition; // TODO !!!!! Special ..Bug ??...
     }
-    this.action='cover-updated';
+    if (!this.isDragging) this.action='cover-updated';
   }
 
 
@@ -1407,6 +1416,8 @@ export class EnhancedShutter extends LitElement
   startOpenCloseDrag(event){
     this.action='user-drag-picker';
     this.getBasePickPoint(event);
+    this.screenPosition = this.basePickPoint.shutterScreenPos;
+    this.react_ShutterPosition = this.cfg.currentDevicePosition();
     this.manageEvents(C.ADD_EVENT, C.MOUSEMOVE, this, this.mouseMoveOpenClosePicker);
     this.manageEvents(C.ADD_EVENT, C.MOUSEUP, window, this.mouseUpOpenClosePicker);
   }

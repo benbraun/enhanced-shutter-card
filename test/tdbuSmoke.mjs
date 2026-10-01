@@ -315,6 +315,38 @@ call = serviceCalls.at(-1);
 check('Top rail stop sends stop_cover to tdbu entity',
   !!call && call.service === 'stop_cover' && call.data.entity_id === 'cover.top_rail', JSON.stringify(call));
 
+// A moving rail must not interrupt dragging the other rail. Device position
+// updates arrive between pointer events, including while the pointer pauses.
+for (const [rail, mainState, topState, startY, endY] of [
+  ['top', 'closing', 'open', 80, 120],
+  ['bottom', 'open', 'opening', 188, 220],
+]) {
+  card.hass = makeHass(30, 30, topState, mainState);
+  await card.updateComplete; await settle(); await tdbuShutter.updateComplete;
+  check(`${rail} rail stays visually available during motion`,
+    /--esc-movement-overlay-background:\s*transparent/.test(styleOf()));
+  serviceCalls.length = 0;
+  fire(rail === 'top' ? tdbuPicker : mainPicker, 'mousedown', startY);
+  fire(tdbuShutter, 'mousemove', endY);
+  await tdbuShutter.updateComplete;
+  const target = rail === 'top' ? topPct(posTextNow()) : tdbuShutter.actualShutterPosition;
+  card.hass = makeHass(rail === 'top' ? 29 : 30, rail === 'bottom' ? 31 : 30, topState, mainState);
+  await card.updateComplete; await settle(); await tdbuShutter.updateComplete;
+  check(`${rail} drag survives the other rail's position update`,
+    (rail === 'top' ? topPct(posTextNow()) : tdbuShutter.actualShutterPosition) === target);
+  check(`${rail} drag stays free of transition lag after device updates`,
+    /--esc-motion-transition-transform:\s*none/.test(styleOf()));
+  fire(window, 'mouseup', endY);
+  check(`${rail} drag sends its target while the other rail moves`,
+    serviceCalls.some(c => c.service === 'set_cover_position' &&
+      c.data.entity_id === (rail === 'top' ? 'cover.top_rail' : 'cover.main') && c.data.position === target),
+    JSON.stringify(serviceCalls));
+  card.hass = makeHass(28, 32, topState, mainState);
+  await card.updateComplete; await settle(); await tdbuShutter.updateComplete;
+  check(`${rail} release resumes device positions`,
+    topPct(posTextNow()) === 32 && tdbuShutter.actualShutterPosition === 28);
+}
+
 // ---- 6. hass update re-renders geometry ---------------------------------
 card.hass = makeHass(30, 30); // establish a fresh baseline after the overlap tests
 await card.updateComplete; await settle(); await tdbuShutter.updateComplete;

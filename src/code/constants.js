@@ -886,7 +886,7 @@ export const SHUTTER_CSS =`
         height: 100%;
         width: 100%;
         position: absolute;
-        background-color: rgba(0,0,0,0.3);
+        background-color: var(--esc-movement-overlay-background, rgba(0,0,0,0.3));
         text-align: center;
         --mdc-icon-size: 60px;
         transform-origin: center center;
