@@ -1214,10 +1214,13 @@ export class EnhancedShutter extends LitElement
 
 
   offsetOpenedPx(){
-    return Math.round(this.cfg.offsetOpenedPct()/ 100 * this.windowSizeMovingDirectionPx());
+    // Duette rail positions use their bottom edge, with the entire rail inside the frame.
+    const inset = this.cfg.shutterPreset() === C.ESC_DUETTE ? 5 + this.shutterBottomSize().y() : 0;
+    return inset + Math.round(this.cfg.offsetOpenedPct()/ 100 * this.windowSizeMovingDirectionPx());
   }
   offsetClosedPx(){
-    return Math.round(this.cfg.offsetClosedPct())/ 100 * this.windowSizeMovingDirectionPx();
+    const inset = this.cfg.shutterPreset() === C.ESC_DUETTE ? 7 : 0;
+    return inset + Math.round(this.cfg.offsetClosedPct())/ 100 * this.windowSizeMovingDirectionPx();
   }
   /**
    *
@@ -1738,6 +1741,7 @@ export class shutterCfg {
 
     this.showGroupMembers(escConfig[C.CONFIG_SHOW_GROUP_MEMBERS]);
 
+    this.shutterPreset(escConfig[C.CONFIG_SHUTTER_PRESET].toLowerCase());
     this.imageMap(escConfig[C.CONFIG_IMAGE_MAP]);
 
     this.windowImage(escConfig[C.CONFIG_WINDOW_IMAGE]);
@@ -2093,6 +2097,9 @@ export class shutterCfg {
   }
   showGroupMembers(value = null){
     return this.#getCfg(C.CONFIG_SHOW_GROUP_MEMBERS,value);
+  }
+  shutterPreset(value = null){
+    return this.#getCfg(C.CONFIG_SHUTTER_PRESET,value);
   }
   imageMap(value = null){
     return this.#getCfg(C.CONFIG_IMAGE_MAP,value);

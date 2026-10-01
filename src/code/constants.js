@@ -385,10 +385,11 @@ export const ESC_CURTAIN = 'curtain';
 export const ESC_TEST = 'test';
 export const ESC_COMPACT = 'compact';
 export const ESC_SHADE = 'shade';
+export const ESC_DUETTE = 'duette';
 export const ESC_BLIND = 'blind';
 export const ESC_ROLLER_SHUTTER = 'roller-shutter';
 export const ESC_TYPES =
-  [ESC_AWNING, ESC_CURTAIN, ESC_ROLLER_SHUTTER,ESC_SHADE,ESC_BLIND];
+  [ESC_AWNING, ESC_CURTAIN, ESC_ROLLER_SHUTTER,ESC_SHADE,ESC_BLIND,ESC_DUETTE];
 
 export const ESC_SHUTTER_PRESET = ESC_ROLLER_SHUTTER;
 export const ESC_STACKED = VERTICAL;
@@ -599,6 +600,13 @@ export const ESC_PRESET = {
     [CONFIG_ROTATE_SLATS_SHUTTER_IMAGE]: false,
     [CONFIG_NAME]: 'Curtain',
   },
+  [ESC_DUETTE]: {
+    [CONFIG_CLOSING_DIRECTION]: DOWN,
+    [CONFIG_OFFSET_OPENED_PCT]: 0,
+    [CONFIG_SHOW_TILT]: false,
+    [CONFIG_VIEW_IMAGE]: '#edf1f2',
+    [CONFIG_NAME]: 'Cellular Shade',
+  },
   [ESC_SHADE]: {
     [CONFIG_SHUTTER_SLAT_IMAGE]: '#00000080',
     [CONFIG_CLOSING_DIRECTION]: DOWN,
@@ -720,6 +728,43 @@ export const SHUTTER_CSS =`
         width: 100%;
         height: 100%;
       }
+      /* Duette-style cellular fabric; keep the existing rail and hit-area geometry. */
+      .${ESC_CLASS_SELECTOR}-duette {
+        border-radius: 3px;
+        background-image:
+          linear-gradient(125deg, transparent 30%, #ffffff55 31%, #ffffff18 48%, transparent 49%),
+          linear-gradient(to bottom, #b8d8e8, #e6f0f3 65%, #d2dfd6);
+      }
+      .${ESC_CLASS_SELECTOR}-duette .${ESC_CLASS_SELECTOR_PICTURE}>img {
+        visibility: hidden;
+      }
+      .${ESC_CLASS_SELECTOR}-duette .${ESC_CLASS_SELECTOR_PICTURE}::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border: 5px solid #e9edef;
+        border-bottom: 7px solid #f5f7f8;
+        box-shadow: inset 0 0 0 1px #aab9c0, inset 0 0 8px #52606333;
+
+        pointer-events: none;
+      }
+      .${ESC_CLASS_SELECTOR}-duette .${ESC_CLASS_SELECTOR_SLIDE_SLATS} {
+        background-image: repeating-linear-gradient(to bottom,
+          #fbfcfc 0px, #f1f3f3 2.4px, #dfe3e3 4.8px, #c8cece 5.4px, #fbfcfc 6px);
+        background-size: 100% 6px;
+        box-shadow: inset 5px 0 8px #52606318, inset -5px 0 8px #52606318;
+      }
+      .${ESC_CLASS_SELECTOR}-duette .${ESC_CLASS_SELECTOR_SLIDE_EDGE} {
+        background: linear-gradient(#fcfdfd, #e0e5e5);
+        box-shadow: inset 0 0 0 1px #bdc5c5, 0 2px 3px #52606322;
+      }
+      .${ESC_CLASS_SELECTOR}-duette .${ESC_CLASS_SELECTOR_SLIDE_HANDLE} {
+        width: 25px;
+        height: 3px;
+        border: 0;
+        background: #8e9999;
+        opacity: .65;
+      }
       .${ESC_CLASS_SELECTOR_PICKER} {
         z-index: ${Z_INDEX_PICKER};
         position: absolute;
@@ -832,7 +877,7 @@ export const SHUTTER_CSS =`
         z-index: 1;
       }
       .${ESC_CLASS_SELECTOR_SLIDE_TDBU_RAIL_TOP} {
-        top: var(--esc-tdbu-clip-top);
+        top: var(--esc-tdbu-rail-top);
         transition: var(--esc-motion-transition-geometry, none);
         transform: scaleY(-1); /* edge image reads as a top rail */
       }

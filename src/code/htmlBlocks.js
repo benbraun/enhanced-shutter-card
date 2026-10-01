@@ -805,7 +805,7 @@ export class htmlBlockCentralWindow extends htmlBlock{
     this.setHtmlString(html`
       ${this.cfg.showWindow()
       ? html`
-        <div class="${C.ESC_CLASS_SELECTOR}">
+        <div class="${C.ESC_CLASS_SELECTOR} ${this.cfg.shutterPreset() === C.ESC_DUETTE ? `${C.ESC_CLASS_SELECTOR}-duette` : ''}">
           <div class="${C.ESC_CLASS_SELECTOR_PICTURE}">
             ${this.escImages.getWindowImageSrc(this.cfg.id()) ? html`<img src= "${this.escImages.getWindowImageSrc(this.cfg.id())}">` : ''}
 

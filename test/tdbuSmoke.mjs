@@ -204,6 +204,10 @@ check('overshoot drag clamps at bottom rail (~70%, never 100%)',
   !!call && call.data.position >= 65 && call.data.position <= 72, `sent ${call?.data?.position}`);
 const styleClamped = styleOf();
 check('clip-height never negative during overshoot', clipHeightOf(styleClamped) >= 0, `got ${clipHeightOf(styleClamped)}`);
+const railTopPx = parseFloat(styleClamped.match(/--esc-tdbu-rail-top:\s*([-\d.]+)px/)?.[1]);
+const railBottomPx = parseFloat(styleClamped.match(/--esc-tdbu-rail-bottom-top:\s*([-\d.]+)px/)?.[1]);
+check('visible top rail never crosses below the bottom rail at collision', railTopPx <= railBottomPx);
+
 
 card.hass = makeHass(30, 30); // differs from 31 -> re-render
 await card.updateComplete; await settle(); await tdbuShutter.updateComplete;
@@ -450,6 +454,33 @@ for (const [options, mainPos, topPos, wanted] of [
 serviceCalls.length = 0;
 plainShutter.doOnclick('open_cover');
 check('ordinary shutters retain open_cover commands', serviceCalls[0]?.service === 'open_cover');
+
+// Appearance presets inherit globally, with an entity override for existing visuals.
+const duette = document.createElement('enhanced-shutter-card');
+duette.setConfig({shutter_preset: 'Duette', entities: [
+  {entity: 'cover.main', tdbu_entity: 'cover.top_rail'},
+  {entity: 'cover.plain'},
+  {entity: 'cover.sideways', shutter_preset: 'roller-shutter'},
+]});
+document.body.append(duette);
+duette.hass = makeHass(30, 30);
+await duette.updateComplete; await settle();
+const variants = [...duette.shadowRoot.querySelectorAll('enhanced-shutter')];
+for (const v of variants) await v.updateComplete;
+check('Duette appearance applies to TDBU and ordinary blinds only when selected',
+  variants.map(v => !!v.shadowRoot.querySelector('.esc-shutter-selector-duette')).join(',') === 'true,true,false');
+check('Duette top stop includes the frame and full rail thickness',
+  variants[0].coverOpenedPx() === 5 + variants[0].shutterBottomSize().y());
+check('Duette bottom stop stays inside the sill',
+  variants[0].coverClosedPx() === variants[0].actualGlobalHeightPx() - 7);
+check('Duette retains both TDBU rail handles',
+  variants[0].shadowRoot.querySelectorAll('.esc-shutter-selector-slide-handle').length === 2);
+check('Duette ordinary blind retains its centered picker handle',
+  !!variants[1].shadowRoot.querySelector('.esc-shutter-selector-picker > .esc-shutter-selector-slide-handle'));
+serviceCalls.length = 0;
+variants[0].sendOpenClose(100);
+check('Duette retains rail collision limits', serviceCalls[0]?.data.position === 70);
+duette.remove();
 
 console.log(failures === 0 ? '\nALL CHECKS PASSED' : `\n${failures} CHECK(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);

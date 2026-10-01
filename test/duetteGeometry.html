@@ -1,0 +1,45 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Duette endpoint geometry regression</title>
+<style>body{font:14px system-ui;color:#273849;background:#f6f7f8}main{display:flex;flex-wrap:wrap;gap:24px}section{padding:16px;background:white}ha-card{display:block}#result{white-space:pre-wrap}</style>
+<h1>Duette endpoint geometry</h1>
+<main></main><pre id="result">Loading…</pre>
+<script type="module">
+import '../dist/enhanced-shutter-card.js';
+const checks=[];
+for(const height of [100,260]) for(const tdbu of [false,true]) for(const position of [0,50,100]) {
+  const preset='duette',width=100;
+  const section=document.createElement('section');
+  section.innerHTML=`<h2>${tdbu ? 'TDBU' : 'Bottom-up'} · ${position}% · ${height}px</h2>`;
+  document.querySelector('main').append(section);
+  const card=document.createElement('enhanced-shutter-card');
+  card.setConfig({entities:[{entity:'cover.test',shutter_preset:preset,name:'Bottom-up',image_map:'/dist',base_height_px:height, ...(tdbu ? {tdbu_entity:'cover.top'} : {}),
+    show_standard_buttons:false,show_partial_open_buttons:false,scale_texts:0.8,resize_width_pct:width,resize_height_pct:100}]});
+  section.append(card);
+  card.hass={states:{'cover.top':{entity_id:'cover.top',state:'open',attributes:{current_position:tdbu ? 100-position : 0,supported_features:15}},'cover.test':{entity_id:'cover.test',state:'open',attributes:{current_position:position,supported_features:15}}},
+    localize:key=>key,language:'en',services:{cover:{}},callService:()=>{},callWS:async()=>[]};
+  checks.push({card,position,height,tdbu});
+}
+// Wait for asynchronous image initialization and real browser layout.
+for(let attempt=0;attempt<100;attempt++) {
+  if(checks.every(({card})=>card.shadowRoot?.querySelector('enhanced-shutter')?.shadowRoot?.querySelector('.esc-shutter-selector-slide-edge')))break;
+  await new Promise(resolve=>setTimeout(resolve,50));
+}
+await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+const results=checks.map(({card,position,height,tdbu})=>{
+  const sr=card.shadowRoot.querySelector('enhanced-shutter').shadowRoot;
+  const window=sr.querySelector('.esc-shutter-selector-picture').getBoundingClientRect();
+  const rail=sr.querySelector(tdbu ? '.esc-shutter-selector-slide-tdbu-rail-bottom' : '.esc-shutter-selector-slide-edge').getBoundingClientRect();
+  const expectedTop=window.top+5;
+  const expectedBottom=window.bottom-7;
+  const expectedY=expectedTop+(expectedBottom-rail.height-expectedTop)*(100-position)/100;
+  const handle=sr.querySelector(tdbu ? '.esc-shutter-selector-slide-tdbu-rail-bottom .esc-shutter-selector-slide-handle' : '.esc-shutter-selector-picker > .esc-shutter-selector-slide-handle').getBoundingClientRect();
+  const errors=[Math.abs(rail.top-expectedY),Math.abs(handle.y+handle.height/2-rail.y-rail.height/2)];
+  if(tdbu){
+    const top=sr.querySelector('.esc-shutter-selector-slide-tdbu-rail-top').getBoundingClientRect();
+    errors.push(Math.abs(top.y-rail.y));
+  }
+  return `${errors.every(e=>e<0.25)?'PASS':'FAIL'}: ${tdbu?'TDBU touching rails':'Bottom-up'}, ${position}%, ${height}px — geometry errors ${errors.map(e=>e.toFixed(2)).join(', ')}px`;
+});
+document.querySelector('#result').textContent=results.join('\n');
+</script>

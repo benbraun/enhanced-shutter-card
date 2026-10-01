@@ -13,6 +13,11 @@ export class htmlShutter{
   }
 
   defStyleVarsShutter(){
+    const duette = this.cfg.shutterPreset() === C.ESC_DUETTE;
+    const railHeight = this.enhancedShutter.shutterBottomSize().y();
+    const bottomRailTop = Math.max(0, this.actualScreenPosition - railHeight);
+    const topRailTop = Math.min(this.enhancedShutter.topRailPx - (duette ? railHeight : 0), bottomRailTop);
+    const clipTop = duette ? topRailTop : this.enhancedShutter.topRailPx;
     const mainState = this.cfg.getCoverEntity().getState() || C.UNAVAILABLE;
     const viewImage=this.escImages.getViewImageSrc(this.cfg.id());
 
@@ -74,11 +79,12 @@ export class htmlShutter{
       --esc-motion-transition-transform: ${motionTransitionTransform};
       --esc-motion-transition-geometry: ${motionTransitionGeometry};
       --esc-transform-slide:  ${this.enhancedShutter.transformSlide(this.actualScreenPosition)};
-      --esc-transform-picker: ${this.enhancedShutter.transformPicker(this.actualScreenPosition)};
-      --esc-transform-picker-tdbu: ${this.enhancedShutter.transformPicker(this.enhancedShutter.topRailPx)};
-      --esc-tdbu-clip-top: ${this.enhancedShutter.topRailPx}px;
-      --esc-tdbu-clip-height: ${Math.max(0, this.actualScreenPosition - this.enhancedShutter.topRailPx)}px;
-      --esc-tdbu-rail-bottom-top: ${Math.max(0, this.actualScreenPosition - this.enhancedShutter.shutterBottomSize().y())}px;
+      --esc-transform-picker: ${this.enhancedShutter.transformPicker(this.actualScreenPosition - (duette && this.cfg.hasTdbu() ? railHeight / 2 : 0))};
+      --esc-transform-picker-tdbu: ${this.enhancedShutter.transformPicker(this.enhancedShutter.topRailPx - (duette ? railHeight / 2 : 0))};
+      --esc-tdbu-clip-top: ${clipTop}px;
+      --esc-tdbu-clip-height: ${Math.max(0, this.actualScreenPosition - clipTop)}px;
+      --esc-tdbu-rail-top: ${topRailTop}px;
+      --esc-tdbu-rail-bottom-top: ${bottomRailTop}px;
       --esc-tilt-angle-deg: ${this.enhancedShutter.getTiltAngleDeg(this.enhancedShutter.react_TiltPosition)};
       --esc-tilt-angle-deg-graph: ${this.enhancedShutter.getTiltAngleDegGraph(this.enhancedShutter.react_TiltPosition)};
 

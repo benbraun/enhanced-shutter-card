@@ -297,12 +297,37 @@ entities:
 ```
 
 ### Shutter Presets
+Use `shutter_preset: duette` for a Hunter Douglas Duette-inspired cellular shade with
+soft horizontal pleats, slim rails, neutral near-white fabric, and a framed
+window with a subtle sky and glass reflection. It works with
+both TDBU and ordinary bottom-up blinds. The default appearance is unchanged.
+The preset accounts for the frame and rail thickness at both stops, with
+`top_offset_pct: 0`. Remove any older
+entity-level `top_offset_pct` override (such as 2, 10, or 13) to use this default.
+Set the preset globally or on individual entities:
+
+```yaml
+type: custom:enhanced-shutter-card
+entities:
+  - entity: cover.living_room
+    tdbu_entity: cover.living_room_top
+    shutter_preset: duette
+```
+
+The Duette preset draws its fabric, rails, and frame with CSS; custom slat, rail,
+window, and background image artwork is replaced by this appearance. Position settings and
+rail controls behave as before.
+
 The following `shutter_preset` settings are available:
 
 |  **Preset Name**   |         **Setting**         |       **Value**       |
 | ------------------ | --------------------------- | --------------------- |
 | **roller-shutter** | `rotate_slat_image`         | `true`                |
 |                    | `name`                      | Roller Shutter        |
+| **duette**        | `closing_direction`         | `down`                |
+|                    | `show_tilt`                 | `false`               |
+|                    | `view_image`                | #edf1f2               |
+|                    | `name`                      | Cellular Shade        |
 | **awning**         | `invert_open_close_ui`      | `true`                |
 |                    | `invert_percentage_ui`      | `true`                |
 |                    | `shutter_slat_image`        | esc-awning.png        |
