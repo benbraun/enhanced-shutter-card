@@ -126,6 +126,7 @@ export class EscImages {
                         // Never reject: we want Promise.all to load as much as possible
                         this.#dimensions.set(src, new xyPair(0, 0));
                         this.#resolvedSrc.set(src, fallbackSrc); // ← remap src
+                        resolve();
                     };
                     fallbackImg.src = fallbackSrc;
                 };

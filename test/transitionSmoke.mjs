@@ -97,7 +97,11 @@ check('while opening, geometry transition var is set',
 
 // 3. While the user drags, transitions must be off even if state is opening/closing
 function fire(target, type, y) {
+  type = ({ mousedown: 'pointerdown', mousemove: 'pointermove', mouseup: 'pointerup' })[type] ?? type;
   const ev = new window.Event(type, { bubbles: true, cancelable: true, composed: true });
+  ev.pointerId = 1;
+  ev.button = 0;
+  ev.isPrimary = true;
   ev.pageX = 10;
   ev.pageY = y;
   target.dispatchEvent(ev);

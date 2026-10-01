@@ -748,6 +748,7 @@ export class EnhancedShutter extends LitElement
   disconnectedCallback() {
     super.disconnectedCallback();
     if (this.resizeObserver) this.resizeObserver.disconnect();
+    this.endDrag();
   }
 
   startResizeObserver() {
@@ -831,33 +832,33 @@ export class EnhancedShutter extends LitElement
     // openClosePicker
     const openClosePicker = findElement(this, `.${C.ESC_CLASS_SELECTOR_PICKER}`);
     if (openClosePicker) {
-      this.manageEvents(C.ADD_EVENT, C.MOUSEDOWN, openClosePicker, this.mouseDownOpenClosePicker);
+      this.bindPointerStart(openClosePicker, this.mouseDownOpenClosePicker);
 
     }
     // tdbuPicker (TDBU top rail)
     const tdbuPicker = findElement(this, `.${C.ESC_CLASS_SELECTOR_PICKER_TDBU}`);
     if (tdbuPicker) {
-      this.manageEvents(C.ADD_EVENT, C.MOUSEDOWN, tdbuPicker, this.mouseDownTdbuPicker);
+      this.bindPointerStart(tdbuPicker, this.mouseDownTdbuPicker);
     }
     // tdbuSlider (TDBU top rail)
     if (this.cfg.hasTdbu() && this.cfg.showTdbuSliderBlock() && this.cfg.isCoverFeatureActive(C.ESC_FEATURE_SET_POSITION)){
       this.tdbuSlider = findElement(this,`.${C.ESC_CLASS_SLIDER_CLASS}.tdbu`);
       if (this.tdbuSlider) {
-        this.manageEvents(C.ADD_EVENT, C.MOUSEDOWN, this.tdbuSlider, this.mouseDownTdbuSlider);
+        this.bindPointerStart(this.tdbuSlider, this.mouseDownTdbuSlider);
       }
     }
     // openCloseSlider
     if (this.cfg.showOpenCloseSliderBlock() && this.cfg.isCoverFeatureActive(C.ESC_FEATURE_SET_POSITION)){
       this.openCloseSlider = findElement(this,`.${C.ESC_CLASS_SLIDER_CLASS}.openclose`);
       if (this.openCloseSlider) {
-        this.manageEvents(C.ADD_EVENT, C.MOUSEDOWN, this.openCloseSlider, this.mouseDownOpenCloseSlider);
+        this.bindPointerStart(this.openCloseSlider, this.mouseDownOpenCloseSlider);
       }
     }
     // tiltSlider
     if (this.cfg.canTilt()&& this.cfg.showTiltSliderBlock()){
       this.tiltSlider = findElement(this,`.${C.ESC_CLASS_SLIDER_CLASS}.tilt`);
       if (this.tiltSlider) {
-        this.manageEvents(C.ADD_EVENT, C.MOUSEDOWN, this.tiltSlider, this.mouseDownTiltSlider);
+        this.bindPointerStart(this.tiltSlider, this.mouseDownTiltSlider);
       }
     }
     // main window
@@ -867,35 +868,51 @@ export class EnhancedShutter extends LitElement
     }
   }
 
-  manageEvents(action, mouseState, target, handler) {
-    if (mouseState === C.MOUSEMOVE) {
-      this.isDragging = action === C.ADD_EVENT;
-      if (!this.isDragging) {
-        this.action = 'user-pick';
-        this.requestUpdate();
-      }
-    }
-
-    const EVENTS = {
-      [C.MOUSEDOWN]: ['touchstart', 'mousedown', 'pointerdown'],
-      [C.MOUSEMOVE]: ['touchmove', 'mousemove', 'pointermove'],
-      [C.MOUSEUP]:   ['touchend', 'mouseup', 'pointerup']
-    };
-    const eventMethod = {
-       [C.ADD_EVENT]:    target.addEventListener.bind(target),
-       [C.REMOVE_EVENT]: target.removeEventListener.bind(target)
-    }
-    for (const type of EVENTS[mouseState]) {
-      if (mouseState === C.MOUSEDOWN && type === 'touchstart' && action === C.ADD_EVENT) {
-        // Workaround: reattach touchstart as non-passive
-        target.removeEventListener(type, handler);
-        eventMethod[action](type, handler, { passive: false });
-      } else {
-        //method(type, handler);
-        eventMethod[action](type, handler);
-      }
-    }
+  bindPointerStart(target, handler) {
+    target.addEventListener('pointerdown', event => {
+      if (event.button !== 0 || event.isPrimary === false || this.isDragging || this.cfg.passiveMode()) return;
+      handler(event);
+    });
   }
+
+  beginDrag(event, move, up) {
+    // Overlapping rails choose their handler after the first decisive move.
+    if (this.dragSession) {
+      this.dragSession.move = move;
+      this.dragSession.up = up;
+      return;
+    }
+    this.dragSession = { pointerId: event.pointerId, move, up };
+    this.isDragging = true;
+    window.addEventListener('pointermove', this.onDragMove);
+    window.addEventListener('pointerup', this.onDragUp);
+    window.addEventListener('pointercancel', this.onDragCancel);
+    window.addEventListener('blur', this.endDrag);
+  }
+
+  onDragMove = event => {
+    if (this.dragSession && event.pointerId === this.dragSession.pointerId) this.dragSession.move(event);
+  };
+  onDragUp = event => {
+    if (!this.dragSession || event.pointerId !== this.dragSession.pointerId) return;
+    const { up } = this.dragSession;
+    this.endDrag();
+    up(event);
+  };
+  onDragCancel = event => {
+    if (event.pointerId === this.dragSession?.pointerId) this.endDrag();
+  };
+  endDrag = () => {
+    window.removeEventListener('pointermove', this.onDragMove);
+    window.removeEventListener('pointerup', this.onDragUp);
+    window.removeEventListener('pointercancel', this.onDragCancel);
+    window.removeEventListener('blur', this.endDrag);
+    this.dragSession = null;
+    this.isDragging = false;
+    this.action = 'user-pick';
+    this.requestUpdate();
+  };
+
   getOverflow(){
     return 'hidden';
     return this.cfg.debug()?'visible':'hidden';
@@ -1418,8 +1435,7 @@ export class EnhancedShutter extends LitElement
     this.getBasePickPoint(event);
     this.screenPosition = this.basePickPoint.shutterScreenPos;
     this.react_ShutterPosition = this.cfg.currentDevicePosition();
-    this.manageEvents(C.ADD_EVENT, C.MOUSEMOVE, this, this.mouseMoveOpenClosePicker);
-    this.manageEvents(C.ADD_EVENT, C.MOUSEUP, window, this.mouseUpOpenClosePicker);
+    this.beginDrag(event, this.mouseMoveOpenClosePicker, this.mouseUpOpenClosePicker);
   }
   startTdbuDrag(event){
     this.action='user-drag-tdbu';
@@ -1430,8 +1446,7 @@ export class EnhancedShutter extends LitElement
       this.defScreenPositionFromTdbuPosition(),
       this.defScreenPositionFromCurrentPosition()
     );
-    this.manageEvents(C.ADD_EVENT, C.MOUSEMOVE, this, this.mouseMoveTdbuPicker);
-    this.manageEvents(C.ADD_EVENT, C.MOUSEUP, window, this.mouseUpTdbuPicker);
+    this.beginDrag(event, this.mouseMoveTdbuPicker, this.mouseUpTdbuPicker);
   }
   nearestTdbuRail(event){
     // TDBU is vertical-only, so a plain vertical comparison within the selector rect works.
@@ -1443,15 +1458,13 @@ export class EnhancedShutter extends LitElement
     const distBottom = Math.abs(localY - this.defScreenPositionFromCurrentPosition());
     return distTop <= distBottom ? 'top' : 'bottom';
   }
-  mouseDownTiltSlider = () => {
+  mouseDownTiltSlider = (event) => {
     this.action='user-drag-tilt';
-    this.manageEvents(C.ADD_EVENT, C.MOUSEMOVE, this, this.mouseMoveTiltSlider);
-    this.manageEvents(C.ADD_EVENT, C.MOUSEUP, window, this.mouseUpTiltSlider);
+    this.beginDrag(event, this.mouseMoveTiltSlider, this.mouseUpTiltSlider);
   }
-  mouseDownOpenCloseSlider = () => {
+  mouseDownOpenCloseSlider = (event) => {
     this.action='user-drag-slider';
-    this.manageEvents(C.ADD_EVENT, C.MOUSEMOVE, this, this.mouseMoveOpenCloseSlider);
-    this.manageEvents(C.ADD_EVENT, C.MOUSEUP, window, this.mouseUpOpenCloseSlider);
+    this.beginDrag(event, this.mouseMoveOpenCloseSlider, this.mouseUpOpenCloseSlider);
   }
   mouseDownTdbuPicker = (event) =>
   {
@@ -1487,8 +1500,7 @@ export class EnhancedShutter extends LitElement
     );
     this.react_TdbuPosition = this.cfg.currentTdbuDevicePosition() ?? 0;
     this.pendingTdbuBasePoint = this.getPoint(event);
-    this.manageEvents(C.ADD_EVENT, C.MOUSEMOVE, this, this.mouseMovePendingTdbu);
-    this.manageEvents(C.ADD_EVENT, C.MOUSEUP, window, this.mouseUpPendingTdbu);
+    this.beginDrag(event, this.mouseMovePendingTdbu, this.mouseUpPendingTdbu);
   }
   mouseMovePendingTdbu = (event) => {
     if (event.pageY === undefined) return;
@@ -1497,30 +1509,23 @@ export class EnhancedShutter extends LitElement
                              pickPoint.coord.y() - this.pendingTdbuBasePoint.coord.y());
     const delta_local = this.cfg.rotateBackOrtho(delta);
     if (Math.abs(delta_local.y()) < C.TDBU_DRAG_DIRECTION_THRESHOLD_PX) return; // wait for a clear direction
-    this.manageEvents(C.REMOVE_EVENT, C.MOUSEMOVE, this, this.mouseMovePendingTdbu);
-    this.manageEvents(C.REMOVE_EVENT, C.MOUSEUP, window, this.mouseUpPendingTdbu);
     if (delta_local.y() > 0){
       // dragging down -> move the bottom rail (main cover), e.g. close from fully open
-      this.manageEvents(C.ADD_EVENT, C.MOUSEMOVE, this, this.mouseMoveOpenClosePicker);
-      this.manageEvents(C.ADD_EVENT, C.MOUSEUP, window, this.mouseUpOpenClosePicker);
+      this.beginDrag(event, this.mouseMoveOpenClosePicker, this.mouseUpOpenClosePicker);
       this.mouseMoveOpenClosePicker(event);
     }else{
       // dragging up -> move the top rail (tdbu)
-      this.manageEvents(C.ADD_EVENT, C.MOUSEMOVE, this, this.mouseMoveTdbuPicker);
-      this.manageEvents(C.ADD_EVENT, C.MOUSEUP, window, this.mouseUpTdbuPicker);
+      this.beginDrag(event, this.mouseMoveTdbuPicker, this.mouseUpTdbuPicker);
       this.mouseMoveTdbuPicker(event);
     }
   };
   mouseUpPendingTdbu = (event) => {
     // Released without a decisive drag: cancel, send nothing.
-    this.manageEvents(C.REMOVE_EVENT, C.MOUSEMOVE, this, this.mouseMovePendingTdbu);
-    this.manageEvents(C.REMOVE_EVENT, C.MOUSEUP, window, this.mouseUpPendingTdbu);
     this.action='user-pick';
   };
-  mouseDownTdbuSlider = () => {
+  mouseDownTdbuSlider = (event) => {
     this.action='user-drag-tdbu';
-    this.manageEvents(C.ADD_EVENT, C.MOUSEMOVE, this, this.mouseMoveTdbuSlider);
-    this.manageEvents(C.ADD_EVENT, C.MOUSEUP, window, this.mouseUpTdbuSlider);
+    this.beginDrag(event, this.mouseMoveTdbuSlider, this.mouseUpTdbuSlider);
   }
 /**
  * MOUSE MOVE
@@ -1573,35 +1578,25 @@ export class EnhancedShutter extends LitElement
 
   mouseUpTiltSlider = (event) => {
     this.action='user-drag-tilt';
-    this.manageEvents(C.REMOVE_EVENT, C.MOUSEMOVE, this, this.mouseMoveTiltSlider);
-    this.manageEvents(C.REMOVE_EVENT, C.MOUSEUP, window, this.mouseUpTiltSlider);
     this.react_TiltPosition = this.getTiltOnScreenPosition(event)
     this.sendTilt(this.react_TiltPosition);
   }
   mouseUpOpenCloseSlider = (event) => {
     this.action='user-drag-slider';
-    this.manageEvents(C.REMOVE_EVENT, C.MOUSEMOVE, this, this.mouseMoveOpenCloseSlider);
-    this.manageEvents(C.REMOVE_EVENT, C.MOUSEUP, window, this.mouseUpOpenCloseSlider);
     this.react_ShutterPosition =  this.getOpenCloseOnScreenPosition(event);
     this.sendOpenClose(this.react_ShutterPosition);
   }
   mouseUpOpenClosePicker = (event) => {
     if (event.pageY === undefined) return;
     this.action='user-drag-picker';
-    this.manageEvents(C.REMOVE_EVENT, C.MOUSEMOVE, this, this.mouseMoveOpenClosePicker);
-    this.manageEvents(C.REMOVE_EVENT, C.MOUSEUP, window, this.mouseUpOpenClosePicker);
     this.react_ShutterPosition = this.getShutterOnScreenPosition(event);
     this.sendOpenClose(this.react_ShutterPosition);
   };
   mouseUpTdbuPicker = (event) => {
     if (event.pageY === undefined) return;
-    this.manageEvents(C.REMOVE_EVENT, C.MOUSEMOVE, this, this.mouseMoveTdbuPicker);
-    this.manageEvents(C.REMOVE_EVENT, C.MOUSEUP, window, this.mouseUpTdbuPicker);
     this.sendTdbuShutterPosition(this.cfg.tdbuEntityId(), this.react_TdbuPosition ?? this.actualTdbuPosition);
   };
   mouseUpTdbuSlider = () => {
-    this.manageEvents(C.REMOVE_EVENT, C.MOUSEMOVE, this, this.mouseMoveTdbuSlider);
-    this.manageEvents(C.REMOVE_EVENT, C.MOUSEUP, window, this.mouseUpTdbuSlider);
     this.react_TdbuPosition = this.getTdbuSliderPosition();
     this.sendTdbuShutterPosition(this.cfg.tdbuEntityId(), this.react_TdbuPosition);
   }
@@ -1657,6 +1652,17 @@ export class EnhancedShutter extends LitElement
   callHassCoverService(entityId,command,args='')
   {
     if (!this.cfg.passiveMode()){
+      if (entityId === this.cfg.entityId() && this.cfg.hasTdbu() &&
+          this.cfg.isCoverFeatureActive(C.ESC_FEATURE_SET_POSITION) &&
+          [C.ACTION_SHUTTER_SET_POS, C.ACTION_SHUTTER_OPEN, C.ACTION_SHUTTER_CLOSE].includes(command)) {
+        const devicePosition = command === C.ACTION_SHUTTER_OPEN ? 100
+          : command === C.ACTION_SHUTTER_CLOSE ? 0 : args.position;
+        if (!Number.isFinite(devicePosition)) return;
+        const position = this.cfg.applyInvertToPosition(devicePosition);
+        const maxPosition = this.getShutterPosFromScreenPos(this.defScreenPositionFromTdbuPosition());
+        args = { position: this.cfg.applyInvertToPosition(boundary(position, 0, Math.max(0, Math.min(100, maxPosition)))) };
+        command = C.ACTION_SHUTTER_SET_POS;
+      }
       const domain= 'cover';
       if (this.checkServiceAvailability(domain, command)) {
         this.hass.callService(domain, command, {

@@ -82,7 +82,7 @@ await import(new URL('../dist/enhanced-shutter-card.js', import.meta.url).href);
 const card = document.createElement('enhanced-shutter-card');
 card.setConfig({
   entities: [
-    { entity: 'cover.main', tdbu_entity: 'cover.top_rail', show_tdbu_slider: true },
+    { entity: 'cover.main', tdbu_entity: 'cover.top_rail', show_tdbu_slider: true, show_open_close_slider: true },
     { entity: 'cover.plain' },
     { entity: 'cover.sideways', tdbu_entity: 'cover.top_rail', closing_direction: 'left' },
   ],
@@ -161,10 +161,15 @@ check('vertical-only warning registered', card.messageManager.countMessages() > 
   `count=${card.messageManager.countMessages()}`);
 
 // ---- drag helpers -------------------------------------------------------
-function fire(target, type, y) {
+function fire(target, type, y, options = {}) {
+  type = ({ mousedown: 'pointerdown', mousemove: 'pointermove', mouseup: 'pointerup' })[type] ?? type;
   const ev = new window.Event(type, { bubbles: true, cancelable: true, composed: true });
+  ev.pointerId = 1;
+  ev.button = 0;
+  ev.isPrimary = true;
   ev.pageX = 10;
   ev.pageY = y;
+  Object.assign(ev, options);
   target.dispatchEvent(ev);
 }
 const topPct = (text) => parseFloat((text.match(/Top:\s*([\d.]+)%/) ?? [])[1]);
@@ -357,6 +362,94 @@ const styleAfter = styleOf();
 check('hass update (pos 30->60) moves clip-top down',
   clipTopOf(styleAfter) > clipTopBase, `was ${clipTopBase}, got ${clipTopOf(styleAfter)}`);
 check('position text updates to Top: 60%', posTextNow().includes('Top: 60'), `text="${posTextNow()}"`);
+
+// All bottom-rail commands must honor the top rail, including slider and buttons.
+card.hass = makeHass(30, 30);
+await card.updateComplete; await settle(); await tdbuShutter.updateComplete;
+serviceCalls.length = 0;
+const bottomSlider = sr.querySelector('.esc-shutter-tilt-slider-class.openclose');
+bottomSlider.value = '100';
+fire(bottomSlider, 'mousedown', 0);
+fire(tdbuShutter, 'mousemove', 0);
+fire(window, 'mouseup', 0);
+check('bottom slider cannot send a position above the top rail',
+  serviceCalls.length === 1 && serviceCalls[0].data.position === 70, JSON.stringify(serviceCalls));
+serviceCalls.length = 0;
+tdbuShutter.doOnclick('open_cover');
+check('bottom open button stops at the top rail',
+  serviceCalls.length === 1 && serviceCalls[0].service === 'set_cover_position' && serviceCalls[0].data.position === 70,
+  JSON.stringify(serviceCalls));
+serviceCalls.length = 0;
+tdbuShutter.doOnclick('set_cover_position', 95);
+check('bottom preset cannot cross the top rail', serviceCalls[0]?.data.position === 70);
+
+// Pointer cancellation and unmount must discard a gesture without sending it.
+for (const cancel of ['pointercancel', 'blur', 'disconnect']) {
+  card.hass = makeHass(31, 30);
+  await card.updateComplete; await settle(); await tdbuShutter.updateComplete;
+  serviceCalls.length = 0;
+  fire(tdbuPicker, 'mousedown', 80);
+  fire(tdbuShutter, 'mousemove', 120);
+  await tdbuShutter.updateComplete;
+  if (cancel === 'disconnect') card.remove();
+  else fire(window, cancel, 120);
+  fire(window, 'mouseup', 120);
+  check(`${cancel} ends dragging without sending a command`, !tdbuShutter.isDragging && serviceCalls.length === 0,
+    JSON.stringify(serviceCalls));
+  if (cancel === 'disconnect') document.body.append(card);
+}
+
+// A single physical gesture can emit compatibility mouse events as well.
+serviceCalls.length = 0;
+fire(tdbuPicker, 'mousedown', 80);
+fire(window, 'mousemove', 120); // continues outside the card
+fire(window, 'mouseup', 120);
+const pointerCall = serviceCalls[0];
+tdbuPicker.dispatchEvent(new window.MouseEvent('mousedown', {bubbles:true, clientX:10, clientY:80}));
+window.dispatchEvent(new window.MouseEvent('mouseup', {bubbles:true, clientX:10, clientY:120}));
+check('pointer gesture outside card sends once; compatibility mouse events are ignored',
+  serviceCalls.length === 1 && pointerCall?.data.position > 30, JSON.stringify(serviceCalls));
+
+// A second touch or non-primary button must not hijack the active gesture.
+for (const pointerType of ['touch', 'pen']) {
+  serviceCalls.length = 0;
+  fire(tdbuPicker, 'mousedown', 80, {pointerType});
+  fire(mainPicker, 'mousedown', 188, {pointerId:2, isPrimary:false, pointerType});
+  fire(window, 'mousemove', 240, {pointerId:2, pointerType});
+  fire(window, 'mouseup', 240, {pointerId:2, pointerType});
+  fire(window, 'pointercancel', 240, {pointerId:2, pointerType});
+  check(`${pointerType}: another pointer cannot finish the active drag`, tdbuShutter.isDragging && serviceCalls.length === 0);
+  fire(window, 'mousemove', 110, {pointerType});
+  fire(window, 'mouseup', 110, {pointerType});
+  check(`${pointerType}: active pointer sends exactly one top-rail command`,
+    serviceCalls.length === 1 && serviceCalls[0].data.entity_id === 'cover.top_rail' && serviceCalls[0].data.position > 30);
+}
+serviceCalls.length = 0;
+fire(tdbuPicker, 'mousedown', 80, {button:2});
+fire(window, 'mouseup', 110, {button:2});
+check('right click does not start a rail drag', !tdbuShutter.isDragging && serviceCalls.length === 0);
+
+// Position inversion is applied once on the way back to the device.
+for (const [options, mainPos, topPos, wanted] of [
+  [{invert_percentage_cover:true}, 70, 30, 30],
+  [{tdbu_invert_percentage:true}, 30, 70, 70],
+]) {
+  const variant = document.createElement('enhanced-shutter-card');
+  variant.setConfig({entities:[{entity:'cover.main', tdbu_entity:'cover.top_rail', ...options}]});
+  document.body.append(variant);
+  variant.hass = makeHass(mainPos, topPos);
+  await variant.updateComplete; await settle();
+  const vs = variant.shadowRoot.querySelector('enhanced-shutter');
+  await vs.updateComplete;
+  serviceCalls.length = 0;
+  vs.sendOpenClose(100);
+  check(`rail clamp respects ${Object.keys(options)[0]}`, serviceCalls[0]?.data.position === wanted,
+    JSON.stringify(serviceCalls));
+  variant.remove();
+}
+serviceCalls.length = 0;
+plainShutter.doOnclick('open_cover');
+check('ordinary shutters retain open_cover commands', serviceCalls[0]?.service === 'open_cover');
 
 console.log(failures === 0 ? '\nALL CHECKS PASSED' : `\n${failures} CHECK(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);
