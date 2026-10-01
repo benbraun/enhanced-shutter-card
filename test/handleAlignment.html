@@ -1,0 +1,36 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Plain-blind handle alignment regression</title>
+<style>body{font:14px system-ui;color:#273849;background:#f6f7f8}main{display:flex;flex-wrap:wrap;gap:24px}section{padding:16px;background:white}ha-card{display:block}#result{white-space:pre-wrap}</style>
+<h1>Plain-blind handle alignment</h1>
+<main></main><pre id="result">Loading…</pre>
+<script type="module">
+import '../dist/enhanced-shutter-card.js';
+const checks=[];
+for(const width of [35,55]) for(const position of [0,50,100]) {
+  const section=document.createElement('section');
+  section.innerHTML=`<h2>${position}% open · ${width}% width</h2>`;
+  document.querySelector('main').append(section);
+  const card=document.createElement('enhanced-shutter-card');
+  card.setConfig({entities:[{entity:'cover.test',name:'Bottom-up',image_map:'/dist',top_offset_pct:10,
+    show_standard_buttons:false,show_partial_open_buttons:false,scale_texts:0.8,resize_width_pct:width,resize_height_pct:90}]});
+  section.append(card);
+  card.hass={states:{'cover.test':{entity_id:'cover.test',state:'open',attributes:{current_position:position,supported_features:15}}},
+    localize:key=>key,language:'en',services:{cover:{}},callService:()=>{},callWS:async()=>[]};
+  checks.push({card,position,width});
+}
+// Wait for asynchronous image initialization and real browser layout.
+for(let attempt=0;attempt<100;attempt++) {
+  if(checks.every(({card})=>card.shadowRoot?.querySelector('enhanced-shutter')?.shadowRoot?.querySelector('.esc-shutter-selector-slide-edge')))break;
+  await new Promise(resolve=>setTimeout(resolve,50));
+}
+await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+const results=checks.map(({card,position,width})=>{
+  const sr=card.shadowRoot?.querySelector('enhanced-shutter')?.shadowRoot;
+  const rail=sr?.querySelector('.esc-shutter-selector-slide-edge')?.getBoundingClientRect();
+  const handle=sr?.querySelector('.esc-shutter-selector-picker > .esc-shutter-selector-slide-handle')?.getBoundingClientRect();
+  const error=rail&&handle ? Math.hypot(rail.x+rail.width/2-handle.x-handle.width/2,rail.y+rail.height/2-handle.y-handle.height/2):Infinity;
+  return `${error<0.25?'PASS':'FAIL'}: ${position}% open, ${width}% width — handle center offset ${error.toFixed(2)}px`;
+});
+document.querySelector('#result').textContent=results.join('\n');
+</script>

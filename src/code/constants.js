@@ -854,6 +854,11 @@ export const SHUTTER_CSS =`
         pointer-events: none;
         z-index: 2;
       }
+      .${ESC_CLASS_SELECTOR_PICKER} > .${ESC_CLASS_SELECTOR_SLIDE_HANDLE} {
+        /* The picker tracks the rail's trailing edge; center its visible
+           handle on the bar while retaining the full picker hit area. */
+        top: calc(50% - var(--esc-slide-edge-height) / 2);
+      }
       .${ESC_CLASS_SELECTOR_PICKER_TDBU} {
         z-index: ${Z_INDEX_PICKER};
         position: absolute;
