@@ -70,7 +70,12 @@ check('overlay z-index is at/above the highest window layer (partial)',
 const shutter = card.shadowRoot?.querySelector('enhanced-shutter');
 await shutter?.updateComplete;
 const sr = shutter?.shadowRoot;
-const cssText = [...(sr?.querySelectorAll('style') ?? [])].map((s) => s.textContent).join('\n');
+// Lit uses adoptedStyleSheets where the DOM supports them (browsers, jsdom >= 31)
+// and falls back to <style> elements otherwise; read both.
+const cssText = [
+  ...[...(sr?.querySelectorAll('style') ?? [])].map((s) => s.textContent),
+  ...[...(sr?.adoptedStyleSheets ?? [])].flatMap((sheet) => [...sheet.cssRules].map((r) => r.cssText)),
+].join('\n');
 const overlayRule = (cssText.match(/\.esc-shutter-movement-overlay\s*\{[^}]*\}/) || [''])[0];
 check('movement-overlay rule is present', overlayRule.length > 0);
 check('movement-overlay is pointer-events:none', /pointer-events:\s*none/.test(overlayRule), overlayRule);

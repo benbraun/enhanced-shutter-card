@@ -116,7 +116,12 @@ check('during drag, transform transition var is none',
 fire(window, 'mouseup', 130);
 
 // 4. The stylesheet actually consumes the vars
-const cssText = [...(sr?.querySelectorAll('style') ?? [])].map((s) => s.textContent).join('\n');
+// Lit uses adoptedStyleSheets where the DOM supports them (browsers, jsdom >= 31)
+// and falls back to <style> elements otherwise; read both.
+const cssText = [
+  ...[...(sr?.querySelectorAll('style') ?? [])].map((s) => s.textContent),
+  ...[...(sr?.adoptedStyleSheets ?? [])].flatMap((sheet) => [...sheet.cssRules].map((r) => r.cssText)),
+].join('\n');
 check('CSS consumes transform transition var', cssText.includes('var(--esc-motion-transition-transform'));
 check('CSS consumes geometry transition var', cssText.includes('var(--esc-motion-transition-geometry'));
 
